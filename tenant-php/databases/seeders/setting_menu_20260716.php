@@ -79,17 +79,21 @@ class SettingMenu20260716 extends Seeder
 
         // 「后台任务」不在初始 seed 创建：无定时任务子菜单时点击会 404。
         // 由 hyperf-crontab 插件安装脚本在挂菜单时创建 setting:job 分组。
+
+        // 5. 应用管理（顶级菜单，仅入口；不写入任何应用安装业务数据）
+        $this->createPage(0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '应用管理', 'ri:store-2-line', 999, 0);
     }
 
     /**
-     * 已安装库：把仍指向 placeholder 的云服务页改到真实组件（不补插应用管理）.
+     * 已安装库：修补云服务真实组件，并确保「应用管理」菜单存在.
      */
     private function ensureCloudPages(): void
     {
         $map = [
-            'setting:cloud:upgrade' => ['path' => '/setting/cloud/upgrade', 'component' => 'base/views/setting/cloud/upgrade/index', 'title' => '系统升级', 'icon' => 'ri:refresh-line', 'sort' => 10],
-            'setting:cloud:register' => ['path' => '/setting/cloud/register', 'component' => 'base/views/setting/cloud/register/index', 'title' => '注册站点', 'icon' => 'ri:registered-line', 'sort' => 20],
-            'setting:cloud-diagnose' => ['path' => '/setting/cloud-diagnose', 'component' => 'base/views/setting/cloud/diagnose/index', 'title' => '云服务诊断', 'icon' => 'ri:cloud-line', 'sort' => 30],
+            'setting:cloud:upgrade' => ['path' => '/setting/cloud/upgrade', 'component' => 'base/views/setting/cloud/upgrade/index', 'title' => '系统升级', 'icon' => 'ri:refresh-line', 'sort' => 10, 'parent' => 'cloud'],
+            'setting:cloud:register' => ['path' => '/setting/cloud/register', 'component' => 'base/views/setting/cloud/register/index', 'title' => '注册站点', 'icon' => 'ri:registered-line', 'sort' => 20, 'parent' => 'cloud'],
+            'setting:cloud-diagnose' => ['path' => '/setting/cloud-diagnose', 'component' => 'base/views/setting/cloud/diagnose/index', 'title' => '云服务诊断', 'icon' => 'ri:cloud-line', 'sort' => 30, 'parent' => 'cloud'],
+            'setting:cloud:store' => ['path' => '/setting/cloud/store', 'component' => 'base/views/setting/cloud/store/index', 'title' => '应用管理', 'icon' => 'ri:store-2-line', 'sort' => 999, 'parent' => 'root'],
         ];
 
         $cloudId = (int) Menu::query()->where('name', 'setting:cloud')->value('id');
@@ -104,10 +108,11 @@ class SettingMenu20260716 extends Seeder
                 }
                 continue;
             }
-            if ($cloudId <= 0) {
+            $parentId = $cfg['parent'] === 'root' ? 0 : $cloudId;
+            if ($cfg['parent'] === 'cloud' && $cloudId <= 0) {
                 continue;
             }
-            $this->createPage($cloudId, $name, $cfg['path'], $cfg['component'], $cfg['title'], $cfg['icon'], $cfg['sort'], 0);
+            $this->createPage($parentId, $name, $cfg['path'], $cfg['component'], $cfg['title'], $cfg['icon'], $cfg['sort'], 0);
         }
     }
 

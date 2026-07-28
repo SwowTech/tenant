@@ -66,6 +66,14 @@ $cloudPages = [
         'parent' => 'setting:cloud',
         'sort' => 30,
     ],
+    'setting:cloud:store' => [
+        'component' => 'base/views/setting/cloud/store/index',
+        'path' => '/setting/cloud/store',
+        'title' => '应用管理',
+        'icon' => 'ri:store-2-line',
+        'parent' => null,
+        'sort' => 999,
+    ],
 ];
 
 $patchCloudComponents = static function (PDO $pdo, array $cloudPages): int {
@@ -274,6 +282,9 @@ try {
     $insertMenu($insert, $toolsId, 'setting:system-check', '/system/check', 'base/views/system/check/index', '', $metaM('系统常规检测', 'ri:health-book-line', true, 1, 'setting:system-check'), $toolSort, $now);
 
     // 「后台任务」由 crontab 插件安装时创建，避免空分组点击 404
+
+    // 应用管理（顶级）
+    $insertMenu($insert, 0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '', $metaM('应用管理', 'ri:store-2-line', true, 0, 'setting:cloud:store'), 999, $now);
 
     // 若无历史角色，挂到 SuperAdmin（若存在）
     if (! $roleIds) {
