@@ -1,0 +1,10 @@
+{
+  "version": "3.0.1-test",
+  "release_date": "2026-07-17",
+  "changelog": "e2e sample",
+  "counts": {
+    "overlay_files": 0,
+    "migrations": 0,
+    "scripts": 0
+  }
+}

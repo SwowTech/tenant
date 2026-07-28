@@ -1,0 +1,2 @@
+import{B as r}from"./BatchTable.02e29785.js";import{n as o}from"./index.b1e70089.js";import"./DiyContent.5eaa5b49.js";import"./vuedraggable.umd.c5a64680.js";var _=function(){var t=this,e=t.$createElement,a=t._self._c||e;return a("div",{staticClass:"admin-body"},[a("BatchTable")],1)},c=[];const s={name:"BatchManage",components:{BatchTable:r}},n={};var i=o(s,_,c,!1,l,"eb527c7c",null,null);function l(t){for(let e in n)this[e]=n[e]}var d=function(){return i.exports}();export{d as default};
+//# sourceMappingURL=BatchManage.b16047a4.js.map

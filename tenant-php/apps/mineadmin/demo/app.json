@@ -1,0 +1,12 @@
+{
+  "name": "mineadmin/demo",
+  "title": "Demo App",
+  "version": "1.0.0",
+  "edition": "community",
+  "family": "mineadmin/demo",
+  "type": "app",
+  "web": { "path": "web" },
+  "process": { "entrypoint": "bin/start.php", "listen": "tcp" },
+  "api_prefix": "api",
+  "auth": { "member_jwt_issuer": "app-member:mineadmin/demo" }
+}

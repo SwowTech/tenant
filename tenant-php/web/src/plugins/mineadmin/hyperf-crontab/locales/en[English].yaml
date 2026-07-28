@@ -1,0 +1,47 @@
+dictionary:
+  crontab:
+    url: URL task
+    class: Class task
+    eval: Eval code block task
+    callback: Callback task
+    command: Command task
+    yes: Yes
+    no: No
+  status:
+    0: Failed
+    1: Normal
+    2: Unknown
+mineCrontab:
+  menu:
+    crontabManage: Crontab task management
+    index: Crontab task list
+    save: Add crontab task
+    update: Edit crontab task
+    delete: Delete crontab task
+    execute: Execute crontab task
+  cols:
+    name: Task name
+    memo: Task description
+    type: Task type
+    status: Task status
+    rule: Task rule
+    value: Call target
+    singleton: Singleton run
+    onOneServer: Single server run
+    nextTime: Next execution time
+    exceptionInfo: Exception information
+    executeTime: Execution time
+  op:
+    executeOnce: Execute once
+    executeSuccess: Execute Success
+    executeFail: Execute Fail
+    run: Run
+    pause: Pause
+    other: Other operations
+    runLogs: Run logs
+    add: Add crontab task
+    edit: Edit
+    delete: Delete
+  status:
+    running: Running
+    stopped: Stopped

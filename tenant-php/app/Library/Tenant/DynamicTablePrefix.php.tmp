@@ -1,0 +1,88 @@
+﻿<?php
+
+declare(strict_types=1);
+
+namespace App\Library\Tenant;
+
+use Hyperf\Context\Context;
+use Hyperf\Contract\ConfigInterface;
+use Hyperf\Database\ConnectionInterface as DbConnectionInterface;
+use Hyperf\DbConnection\Connection as DbConnection;
+use Hyperf\DbConnection\Pool\DbPool;
+use Hyperf\DbConnection\Pool\PoolFactory;
+use ReflectionProperty;
+
+final class DynamicTablePrefix
+{
+    public function __construct(
+        private readonly ConfigInterface $config,
+        private readonly PoolFactory $poolFactory,
+    ) {}
+
+    public function apply(string $prefix, string $connection = 'default'): void
+    {
+        $this->config->set("databases.{$connection}.prefix", $prefix);
+
+        $pool = $this->poolFactory->getPool($connection);
+        $this->rewritePoolConfig($pool, $prefix);
+        $pool->flushAll();
+
+        $ctxKey = sprintf('database.connection.%s', $connection);
+        $conn = Context::get($ctxKey);
+        if ($conn instanceof DbConnectionInterface) {
+            $this->rewriteLiveConnection($conn, $prefix);
+        }
+    }
+
+    public function reset(string $connection = 'default'): void
+    {
+        $this->apply('', $connection);
+    }
+
+    /**
+     * 鍦ㄦ棤琛ㄥ墠缂€鐜涓嬫墽琛岋紙骞冲彴鍚嶅唽 ops_tenant 绛夛級.
+     *
+     * @template T
+     * @param  callable(): T  $fn
+     * @return T
+     */
+    public function withoutPrefix(callable $fn, string $connection = 'default'): mixed
+    {
+        $previous = (string) $this->config->get("databases.{$connection}.prefix", '');
+        $this->apply('', $connection);
+        try {
+            return $fn();
+        } finally {
+            $this->apply($previous, $connection);
+        }
+    }
+
+    private function rewritePoolConfig(DbPool $pool, string $prefix): void
+    {
+        $prop = new ReflectionProperty($pool, 'config');
+        $cfg = $prop->getValue($pool);
+        $cfg['prefix'] = $prefix;
+        $prop->setValue($pool, $cfg);
+    }
+
+    private function rewriteLiveConnection(DbConnectionInterface $conn, string $prefix): void
+    {
+        if ($conn instanceof DbConnection) {
+            $prop = new ReflectionProperty($conn, 'config');
+            $cfg = $prop->getValue($conn);
+            $cfg['prefix'] = $prefix;
+            $prop->setValue($conn, $cfg);
+
+            $innerProp = new ReflectionProperty($conn, 'connection');
+            $inner = $innerProp->getValue($conn);
+            if ($inner instanceof \Hyperf\Database\Connection) {
+                $inner->setTablePrefix($prefix);
+
+                return;
+            }
+        }
+
+        // DbConnection forwards unknown methods via __call; avoid method_exists.
+        $conn->setTablePrefix($prefix);
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "swowtech/xunlian-trace",
+  "title": "溯源防伪",
+  "version": "1.0.0",
+  "edition": "community",
+  "family": "swowtech/xunlian-trace",
+  "type": "app",
+  "web": { "path": "web" },
+  "process": { "entrypoint": "bin/start.php", "listen": "tcp" },
+  "api_prefix": "api",
+  "auth": { "member_jwt_issuer": "app-member:swowtech/xunlian-trace" }
+}

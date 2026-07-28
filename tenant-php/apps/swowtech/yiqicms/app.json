@@ -1,0 +1,11 @@
+{
+  "name": "swowtech/yiqicms",
+  "title": "易企CMS",
+  "version": "1.0.0",
+  "type": "app",
+  "web": { "path": "web" },
+  "process": { "entrypoint": "bin/start.php", "listen": "tcp" },
+  "api_prefix": "",
+  "proxy_all": true,
+  "auth": { "member_jwt_issuer": "app-member:swowtech/yiqicms" }
+}

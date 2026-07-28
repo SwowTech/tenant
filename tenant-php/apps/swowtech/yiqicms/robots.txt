@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /plugins/
+Disallow: /config/
+Disallow: /template/
+Disallow: /runtime/
+Disallow: /inc/
+Disallow: /form/
+Disallow: /js/
+Disallow: /upload/
+Disallow: /cgi-bin/
+Allow: /upload/public/

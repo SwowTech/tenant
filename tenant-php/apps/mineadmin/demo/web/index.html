@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo App</title>
+</head>
+<body>
+  <h1>Demo App</h1>
+  <p><a href="admin.html">应用自管后台</a></p>
+  <form id="login">
+    <input name="username" placeholder="用户名" required />
+    <input name="password" type="password" placeholder="密码" required />
+    <button type="submit">登录</button>
+  </form>
+  <pre id="out"></pre>
+  <script>
+    document.getElementById('login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const res = await fetch('api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }),
+      });
+      document.getElementById('out').textContent = await res.text();
+    });
+  </script>
+</body>
+</html>

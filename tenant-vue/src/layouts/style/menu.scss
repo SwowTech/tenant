@@ -1,0 +1,133 @@
+.mine-menu-item {
+  @apply mx-auto px-2 relative transition-all;
+}
+
+.mine-menu-link {
+  @apply flex items-center justify-between text-sm px-[var(--mine-g-menu-retract-width)] mt-1.5 cursor-pointer
+  decoration-none rounded truncate overflow-x-hidden
+  text-gray-7 dark-text-gray-2
+  ;
+
+  transition: all 0.2s, display 0.3s;
+
+  .mine-menu-link-left {
+    @apply flex items-center gap-x-3 h-11 text-sm justify-center;
+
+    & .mine-menu-icon {
+      @apply w-[24px] h-[20px] text-[20px] shrink-0;
+    }
+
+    & .title {
+      @apply truncate;
+    }
+
+    &.mine-menu-link-left--collapse-label {
+      @apply w-full h-auto min-h-11 flex-col items-center justify-center gap-x-0 gap-y-0.5 py-1.5;
+
+      & .mine-menu-icon {
+        @apply mx-auto;
+      }
+
+      & .title {
+        @apply w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-xs leading-tight;
+      }
+    }
+  }
+
+  &.mine-menu-link--collapse-label {
+    @apply w-full justify-center items-center px-0! overflow-visible;
+  }
+
+  .mine-collapse-icon {
+    @apply
+    relative ml-1 w-[10px]
+    after:(absolute h-[1.5px] w-[6px] bg-current transition-transform-200 content-empty -translate-y-[1px])
+    before:(absolute h-[1.5px] w-[6px] bg-current transition-transform-200 content-empty -translate-y-[1px]);
+  }
+
+  .mine-menu-badge {
+    @apply text-xs py-0.5 px-1 rounded-md
+    bg-red-4 dark-bg-red-6
+    text-white
+    ;
+  }
+}
+
+// 折叠栏：图标 + 两字在固定宽度内水平居中对齐
+.mine-sub-aside-rail--collapse {
+  .mine-menu-item {
+    @apply px-1 w-full mx-0 box-border;
+  }
+
+  .mine-menu-link--collapse-label {
+    @apply mx-auto box-border;
+    width: calc(100% - 4px);
+  }
+
+  .mine-menu-link-left--collapse-label {
+    padding-left: 0 !important;
+  }
+}
+
+.mine-menu-link:hover {
+  @apply
+  bg-[rgb(var(--ui-primary)/5%)] text-[rgb(var(--ui-primary))]
+  dark-bg-[rgb(var(--ui-primary)/30%)] dark-text-gray-2
+  ;
+}
+
+.mine-menu-link.active {
+  @apply
+  bg-[rgb(var(--ui-primary)/5%)] text-[rgb(var(--ui-primary))]
+  dark-bg-[rgb(var(--ui-primary)/70%)] dark-text-gray-2
+  ;
+}
+
+.mine-menu-link.parentActive {
+  @apply text-[rgb(var(--ui-primary))];
+}
+
+.mine-sub-menu {
+  @apply
+  ring-stone-2 dark-ring-stone-8
+  bg-[#f9fafc] dark-bg-dark-8
+  ;
+}
+
+.mine-menu-enter-active {
+  transition: 0.2s;
+}
+
+.mine-menu-enter-from,
+.mine-menu-leave-active {
+  opacity: 0;
+  transform: translateY(30px) skewY(10deg);
+}
+
+.mine-menu-leave-active {
+  position: absolute;
+}
+
+.mine-collapse-aside-panel {
+  @apply relative z-1 flex flex-col h-full shrink-0 overflow-hidden
+    bg-[#f9fafc] dark-bg-dark-8
+    border-l-1 border-l-solid border-l-[#e8e9ec] dark-border-l-dark-5
+  ;
+  width: var(--mine-g-sub-aside-width);
+
+  &__title {
+    @apply h-12 flex items-center px-4 text-sm font-medium shrink-0
+      border-b-1 border-b-solid border-b-[#e8e9ec] dark-border-b-dark-5
+      text-gray-8 dark-text-gray-1 truncate
+    ;
+  }
+
+  &__list {
+    @apply flex-1 overflow-y-auto py-1;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}

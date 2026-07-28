@@ -1,0 +1,13 @@
+{
+  "name": "swowtech/xunlian-trace-tp6",
+  "title": "溯源防伪(TP6)",
+  "version": "1.0.0",
+  "edition": "community",
+  "family": "swowtech/xunlian-trace",
+  "type": "app",
+  "web": { "path": "public" },
+  "process": { "entrypoint": "bin/start.php", "listen": "tcp" },
+  "api_prefix": "",
+  "proxy_all": true,
+  "auth": { "member_jwt_issuer": "app-member:swowtech/xunlian-trace-tp6" }
+}

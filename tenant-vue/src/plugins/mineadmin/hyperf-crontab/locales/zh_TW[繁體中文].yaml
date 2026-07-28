@@ -1,0 +1,47 @@
+dictionary:
+  crontab:
+    url: URL任務
+    class: 類任務
+    eval: Eval 代碼塊任務
+    callback: 回調任務
+    command: 命令任務
+    yes: 是
+    no: 否
+  status:
+    0: 失敗
+    1: 正常
+    2: 未知
+mineCrontab:
+  menu:
+    crontabManage: 定時任務管理
+    index: 定時任務列表
+    save: 添加定時任務
+    update: 編輯定時任務
+    delete: 删除定時任務
+    execute: 執行定時任務
+  cols:
+    name: 任務名稱
+    memo: 任務描述
+    type: 任務類型
+    status: 任務狀態
+    rule: 任務規則
+    value: 調用目標
+    singleton: 单例運行
+    onOneServer: 单服務器運行
+    nextTime: 下次執行時間
+    exceptionInfo: 異常信息
+    executeTime: 執行時間
+  op:
+    executeOnce: 執行一次
+    executeSuccess: 執行成功
+    executeFail: 執行失敗
+    run: 運行
+    pause: 暫停
+    other: 其他操作
+    runLogs: 運行日誌
+    add: 添加定時任務
+    edit: 編輯
+    delete: 删除
+  status:
+    running: 運行中
+    stopped: 已停止

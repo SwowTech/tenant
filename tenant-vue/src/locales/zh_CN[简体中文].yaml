@@ -1,0 +1,822 @@
+loginForm:
+  loginButton: 登录
+  passwordPlaceholder: 请输入密码
+  codeLabel: 验证码
+  usernameLabel: 账户
+  codePlaceholder: 请输入验证码
+  usernamePlaceholder: 请输入账户
+  passwordLabel: 密码
+tenantLogin:
+  title: 租户登录
+  subtitle: 访问多租户管理控制台
+  tabLogin: 登录
+  tabRegister: 注册
+  tenantDomain: 租户标识
+  tenantDomainPlaceholder: 注册时的域名标识
+  tenantDomainLockedHint: 已由当前访问域名识别
+  username: 账号
+  usernamePlaceholder: 用户名
+  password: 密码
+  passwordPlaceholder: 请输入密码
+  submitLogin: 立即登录
+  submitRegister: 注册并开通
+  name: 名称
+  namePlaceholder: 站点 / 租户名称
+  domain: 域名标识
+  domainPlaceholder: 子域，可改
+  suggestDomain: 换一个
+  customDomain: 自定义域名
+  customDomainPlaceholder: 可选，不填请留空
+  phone: 联系电话
+  email: 联系邮箱
+  remark: 备注
+  remarkPlaceholder: 可选
+  adminUser: 管理员账号
+  adminPass: 管理员密码
+  adminPassPlaceholder: 至少 8 位，字母+数字
+  registerSuccess: 注册成功，请使用管理员账号登录
+  tenantRequired: 请输入租户标识
+  tenantResolveFailed: 无法识别租户
+mineAdmin:
+  goHome: 回到首页
+  settings:
+    copyRights:
+      date: 时间
+      website: 网址
+      enable: 启用版权
+      putOnRecord: 备案号
+      company: 公司
+    primaryColorSetting: 主颜色设置
+    toolBarSettings: 工具栏设置
+    tabBarSettings: 标签栏设置
+    save: 保存配置
+    colorMode: 颜色模式
+    layoutSetting: 布局设置
+    title: 后台设置
+    layouts:
+      classic: 经典布局
+      columns: 分栏布局
+      mixed: 混合布局
+    watermarkText: 水印文字
+    colorModes:
+      system: 系统
+      light: 明亮
+      dark: 黑暗
+    mainAsideSetting: 主侧栏设置
+    enableWatermark: 启用水印
+    otherSettings: 其他设置
+    mainAsides:
+      autoToFirstMenu: 自动进入第一个菜单
+      mainMenuTitle: 主菜单标题
+    subAsideSetting: 侧栏折叠交互
+    subAsides:
+      collapseSubMenuMode: 折叠后点击菜单
+      collapseModePopup: 弹出菜单
+      collapseModeAside: 右侧列表
+    copyRightSettings: 版权设置
+    enableBreadcrumb: 启用面包屑
+    asideDark: 侧边栏黑暗模式
+    tabbars:
+      mode: 标签栏风格
+      modeCard: 卡片
+      enable: 启用标签栏
+      modeDefault: 默认
+  shortcuts:
+    switchN: 切换到N页
+    switchLast: 切换最后一个
+    searchOpen: 呼出
+    searchBar: 搜索栏
+    tabs: 标签页
+    close: 关闭
+    exitMax: 退出最大化
+    toMax: 进入最大化
+  runtime:
+    devDependencies: 开发依赖
+    pluginList: 插件列表
+    pluginCount: 插件总数
+    systemVersion: 系统版本
+    coreInfo: 核心信息
+    dependencies: 生产依赖
+    lastBuildTime: 最后构建时间
+  sys:
+    notComponent: 没有找到页面，无法跳转
+    unknown: 未知
+  uc:
+    shortBackControl: 返回
+    backControl: 返回控制面板
+    setAllRead: 全部设为已读
+    title: 用户中心
+  notification:
+    todo: 待办
+    allRead: 全部已读
+    gotoTheList: 转到列表
+    message: 消息
+    notice: 通知
+  search:
+    placeholder: 搜索页面，支持名称、标识以及URL的模糊查询
+    noNameMenu: 未命名菜单
+    notResult: 没有搜索到页面
+  userBar:
+    showState: 显示用户栏
+    hideState: 隐藏用户栏
+    systemInfo: 系统信息
+    logout: 退出系统
+    shortcuts: 快捷键介绍
+    clearCache: 清除缓存
+    uc: 用户中心
+  common:
+    saveSuccess: 保存成功
+    clearCache: 缓存已清空
+  plugin:
+    disabled: 已禁用
+    enabled: 已启用
+  tab:
+    cannotUnfixed: 此标签不能取消固定
+    favorites: 标签页收藏夹
+    addFavorite: 加入到收藏夹
+    fullscreen: 全屏标签页
+    closeLeft: 关闭左侧标签页
+    closeOther: 关闭其他标签页
+    closeRight: 关闭右侧标签页
+    refresh: 刷新标签页
+    fixed: 固定标签页
+    has: 此标签页已收藏过
+    noFavorite: 还没有收藏任何标签页
+    close: 关闭标签页
+  slogan: 开源租户站点框架
+  toolbars:
+    notification: 通知
+    settings: 设置
+    search: 搜索
+    fullscreen: 全屏
+    sorts: 工具栏排序
+    switchMode: 切换颜色模式
+    translate: 国际化
+  mark: 开箱即用
+menu:
+  "uc:index": 首页
+  "dashboard:analysis": 分析页
+  pageError: 页面出错了
+  appstore: 应用商店
+  "dashboard:workbench": 工作台
+  "dashboard:report": 统计报表
+  "uc:logs": 日志
+  login: 登录
+  "uc:message": 消息
+  welcome: 欢迎页
+  systemCheck: 系统常规检测
+  dashboard: 仪表盘
+  founder: 租户管理
+  "founder:tenants": 租户列表
+  "founder:app-domains": 应用域名
+  setting: 站点设置
+  "setting:cloud": 云服务
+  "setting:cloud:store": 应用管理
+  "setting:cloud:upgrade": 系统升级
+  "setting:cloud:register": 注册站点
+  "setting:cloud-diagnose": 云服务诊断
+  "setting:group": 设置
+  "setting:site": 站点设置
+  "setting:site:page": 站点设置
+  "setting:attachment": 附件设置
+  "setting:attachment:page": 附件设置
+  "setting:systeminfo": 系统信息
+  "setting:systeminfo:page": 系统信息
+  "setting:user-login": 用户登录/注册设置
+  "setting:user-login:page": 用户登录/注册设置
+  "setting:tools": 常用工具
+  "setting:tools:database": 数据库
+  "setting:system-check": 系统常规检测
+  "setting:job": 后台任务
+  "apps:mine": 我的应用
+crud:
+  cancel: 取消
+  save: 保存
+  ok: 确定
+  add: 新增
+  edit: 编辑
+  delete: 删除
+  search: 搜索
+  reset: 重置
+  submit: 提交
+  searchFold: 收起
+  searchUnFold: 展开
+  selection: 多选
+  operation: 操作
+  createSuccess: 创建成功
+  updateSuccess: 修改成功
+  delMessage: 是否删除所选中数据？
+  delDataMessage: 是否删除数据？
+  delNoData: 至少要选择一行数据
+  delSuccess: 删除成功
+  status: 状态
+  remark: 备注
+  sort: 排序
+  createTime: 创建时间
+  updateTime: 更新时间
+  exportMessage: 是否确认导出数据？
+  importMessage: 是否确认导入数据？
+  confirmTitle: 系统提示
+  confirmMessage: 确定要%{msg}吗？
+  noPermission: 没有权限访问页面或使用此功能
+  userNotAllow: 当前用户不可访问或使用此功能
+  superAdminNoEdit: 超管不可修改
+form:
+  pleaseInput: 请输入{msg}
+  pleaseSelect: 请选择{msg}
+  requiredInput: '{msg}必填'
+  requiredSelect: '{msg}必选'
+dictionary:
+  system:
+    statusEnabled: 启用
+    statusDisabled: 禁用
+    successState: 成功
+    failState: 失败
+  base:
+    systemUser: 系统用户
+    normalUser: 普通用户
+  dataScope:
+    all: 全部数据权限
+    deptSelf: 本部门数据权限
+    deptTree: 本部门及所有子部门数据权限
+    self: 本人数据权限
+    customDept: 自选部门数据权限
+    customFunc: 自定义函数数据权限
+dashboardPage:
+  loadFailed: 加载失败
+  analysisLoadFailed: 分析页加载失败
+  reportLoadFailed: 统计报表加载失败
+  mom: 环比
+  rank: 排名
+  account: 账号
+  opsCount: 操作次数
+  tenantLabel: 租户
+  domain: 域名
+  status: 状态
+  unknown: 未知
+  tenantStatus: 租户状态
+  browserDist: 浏览器分布
+  appEnableRank: 应用启用排行
+  hotBiz: 热门业务
+  statusActive: 正常
+  statusDisabled: 停用
+  statusProvisioning: 开通中
+  statusFailed: 失败
+  platform:
+    page_title: 平台总览
+    report_title: 平台统计报表
+    trend_title: 近14日新建租户
+    ranking_title: 最近开通租户
+    pie_title: 租户状态分布
+  tenant:
+    page_title: 租户运营概览
+    report_title: 租户统计报表
+    trend_title: 近14日登录与操作
+    ranking_title: 近7日活跃账号
+    pie_title: 登录成功/失败
+  site:
+    page_title: 本站概览
+    report_title: 本站统计报表
+    trend_title: 近14日登录与操作
+    ranking_title: 近7日活跃账号
+    pie_title: 登录成功/失败
+  kpi:
+    users: 用户总数
+    logins: 近7日登录成功
+    ops: 近7日操作次数
+    attachments: 附件数
+    tenants: 租户总数
+    active: 正常租户
+    pending: 开通中/失败
+    apps: 已启用应用实例
+  series:
+    login_ok: 登录成功
+    ops: 操作次数
+    new_users: 新增用户
+    new_tenants: 新建租户
+  pie:
+    success: 成功
+    fail: 失败
+    active: 正常
+    disabled: 停用
+    pending: 开通中/失败
+    bound: 已绑定
+    unbound: 未绑定
+  summary:
+    logins_30: 近30日登录
+    ops_30: 近30日操作
+    new_users_30: 近30日新增用户
+    retention_7: 近7日留存用户
+    tenants: 租户总数
+    active: 正常租户
+    pending: 开通中/失败
+    custom_domain: 已绑自定义域
+  item:
+    week_login: 本周登录趋势
+    week_ops: 本周操作趋势
+    retention_7: 近7日留存用户
+    attach_7: 附件近7日新增
+    provision_30: 近30日开通趋势
+    app_rank: 租户应用启用排行
+    domain_bind: 域名绑定
+    status_dist: 状态分布
+  axis:
+    bound: 已绑定
+    unbound: 未绑定
+    active: 正常
+    disabled: 停用
+    pending: 异常
+founderTenants:
+  forbidden: 仅创始人可访问此页面
+  name: 名称
+  code: 编码
+  status: 状态
+  namePlaceholder: 租户名称
+  codePlaceholder: 租户编码
+  all: 全部
+  addTenant: 新增租户
+  editTenant: 编辑租户
+  accessDomain: 访问域名
+  domain: 域名
+  prefix: 前缀
+  copy: 复制
+  copied: 已复制
+  copyFailed: 复制失败
+  assignApp: 附加应用
+  enterTenant: 进入租户管理
+  enable: 启用
+  disable: 停用
+  reprovision: 重试开通
+  domainLabel: 域名标识
+  domainPlaceholder: 子域，可改；未填自定义域名时用此项
+  customDomain: 自定义域名
+  customDomainPlaceholder: 可选，不填请留空
+  contactPhone: 联系电话
+  contactEmail: 联系邮箱
+  remark: 备注
+  adminUser: 管理员账号
+  adminPass: 管理员密码
+  suggestAnother: 换一个
+  attached: 已附加
+  add: 添加
+  app: 应用
+  version: 版本
+  expires: 有效期
+  forever: 永久
+  expired: 已过期
+  modify: 修改
+  selectApps: 选择要附加的应用
+  licensePeriod: 授权有效期
+  licensePeriodRecalc: 授权有效期（从现在起重新计算）
+  year: 年
+  month: 月
+  licenseHint: 年、月可组合（如 1 年 6 月）；都为 0 表示永久。重新附加会刷新到期时间。
+  assign: 附加
+  editAttached: 修改已附加应用
+  current: 当前
+  until: 至 {date}
+  expiredUntil: 已过期（至 {date}）
+  tenantLine: "租户：{name}（{prefix}）"
+  statusActive: 正常
+  statusDisabled: 停用
+  statusProvisioning: 开通中
+  statusFailed: 开通失败
+  licenseForever: 永久
+  license1m: 1 个月
+  license3m: 3 个月
+  license6m: 6 个月
+  license1y: 1 年
+  license2y: 2 年
+  license3y: 3 年
+  licenseCustom: 自定义（年+月）
+  msgUpdated: 已更新
+  msgUpdateOk: 更新成功
+  msgCreateOk: 创建并开通成功
+  msgEnabled: 已启用
+  msgDisabled: 已停用
+  msgReprovisionOk: 重试开通成功
+  msgAssignOk: 附加成功
+  msgNeedActiveAssign: 请先开通或启用租户后再附加应用
+  msgNeedActiveEnter: 请先开通或启用租户后再进入
+  msgSelectApp: 请选择要附加的应用
+  msgEnterFailed: 进入租户失败
+  msgSuggestFailed: 随机域名获取失败，请手动填写
+  msgDomainRequired: 请输入域名标识
+  msgDomainFormat: 仅支持小写字母、数字、连字符
+  msgDomainExists: 域名标识已存在
+  msgDomainCheckFailed: 域名检测失败，请稍后重试
+  msgNameRequired: 请输入名称
+  msgAdminUserRequired: 请输入管理员账号
+  msgAdminPassRequired: 请输入管理员密码
+appDomains:
+  tenantHint: 可为已安装应用绑定多个独立域名；DNS/hosts 指向本机后即可用域名直达应用。
+  filterTenant: 筛选租户
+  filterApp: 应用标识 vendor/app
+  search: 查询
+  bind: 绑定域名
+  tenant: 租户
+  app: 应用
+  domain: 域名
+  scheme: 协议
+  primary: 主域名
+  yes: 是
+  setPrimary: 设为主
+  publicBase: 访问根地址
+  actions: 操作
+  edit: 编辑
+  unbind: 解绑
+  cancel: 取消
+  save: 保存
+  bindTitle: 绑定应用域名
+  editTitle: 编辑应用域名
+  domainPlaceholder: "如 sy.example.com（不含端口）"
+  dnsTitle: "DNS / hosts 怎么配"
+  dnsLocal: "本地开发：把下面一行写入 hosts（管理员权限），然后用带端口的地址访问。"
+  dnsLocalHosts: "127.0.0.1  {domain}"
+  dnsLocalOpen: "访问地址：{url}"
+  dnsProd: "正式环境：在域名服务商添加解析，把域名指到本服务器公网 IP（或经 Nginx/Caddy 反代到网关端口）。"
+  dnsProdA: "A 记录：主机记录填子域（如 sy），值填服务器 IP；根域用 {'@'}。"
+  dnsProdCname: "也可 CNAME 到已解析的主站域名（若服务商支持）。"
+  dnsProdPort: "对外若只用 80/443，请用反向代理把 {domain} 转到网关端口 {port}；开发直连请访问 {url}。"
+  dnsEmpty: "先填写域名后，这里会显示具体配置提示。"
+  tenantRequired: 请选择租户
+  appRequired: 请选择应用
+  domainRequired: 请输入域名
+  created: 绑定成功
+  updated: 已更新
+  deleted: 已解绑
+  setPrimaryOk: 已设为主域名
+  saveFailed: 保存失败
+  deleteFailed: 解绑失败
+  deleteTitle: 解绑域名
+  deleteConfirm: "确定解绑域名 {domain}？"
+  noApps: 当前租户尚未安装应用
+appsEdition:
+  family: 应用家族
+  edition: 档位
+  migrateData: 迁移数据
+  migrateConfirm: 将从 {from} 迁移数据到 {to}，不会停用旧应用
+  standard: 标准
+appsMine:
+  settings: 设置
+  domainSection: 绑定域名
+  passwordSection: 管理员密码
+  adminUser: 管理员账号
+  newPassword: 新密码
+  confirmPassword: 确认密码
+  savePassword: 保存密码
+  passwordRequired: 请输入新密码
+  passwordMin: 密码至少 6 位
+  passwordConfirmRequired: 请再次输入密码
+  passwordMismatch: 两次输入的密码不一致
+  passwordChanged: 应用管理员密码已更新
+  passwordFailed: 修改密码失败
+  passwordUnsupported: 该应用暂不支持在此修改管理员密码，请进入应用后台修改
+  loadSettingsFailed: 加载应用设置失败
+settingTools:
+  databaseTitle: 数据库
+  databaseAlert: 使用本系统备份的数据，只能用本系统还原。请在低峰期操作；还原会覆盖现有数据。
+  tabBackup: 备份
+  tabRestore: 还原
+  tabOptimize: 优化
+  backupDesc: 将导出当前上下文可见的数据表（进入租户时仅备份该租户前缀表）。备份文件保存在服务端
+  visibleTables: 当前可见表：{count} 张
+  startBackup: 开始备份
+  backupConfirmTitle: 开始备份
+  backupConfirmMsg: 请在访问量较低时操作。备份仅可用本系统还原，请勿手动改 SQL。是否开始备份？
+  backupPreparing: 正在准备备份…
+  backupFailed: 备份失败
+  backupDone: 备份完成
+  backupInterrupted: 备份中断
+  restoreDesc: 还原后建议刷新页面并检查业务数据。
+  backupName: 备份名称
+  backupTime: 备份时间
+  volumeCount: 分卷数量
+  size: 大小
+  tablePrefix: 表前缀
+  restoreThis: 还原此备份
+  noBackups: 暂无备份
+  restoreConfirmTitle: 还原备份
+  restoreConfirmMsg: 确定将数据库还原到 {time} 的备份吗？当前数据将被覆盖，请谨慎操作！
+  restoreConfirmBtn: 确定还原
+  restoring: 正在还原…
+  restoreFailed: 还原失败
+  restoreDone: 还原完成
+  deleteBackupTitle: 删除备份
+  deleteBackupMsg: 确认删除备份 {name}？
+  deleted: 已删除
+  deleteFailed: 删除失败
+  optimizeAlert: 数据表优化可减少碎片、提高读写效率。默认勾选存在碎片（Data_free > 0）的表。
+  startOptimize: 开始优化
+  selectAll: 全选
+  clearSelection: 清空
+  tableName: 表名
+  engine: 引擎
+  rows: 记录数
+  dataSize: 数据尺寸
+  indexSize: 索引尺寸
+  freeSize: 碎片尺寸
+  selectTables: 请选择要优化的表
+  optimizedCount: 已优化 {count} 张表
+  optimizeFailed: 优化失败
+  systemCheckTitle: 系统常规检测
+  runCheck: 检测
+  copyResult: 复制结果
+  checkSummary: 全部检测{total}项，错误检测项{wrong}项
+  checkName: 检测项名称
+  checkResult: 检测结果
+  checkOk: 正确
+  checkFail: 错误
+  suggestion: 解决建议
+  suggestedAction: 建议操作
+  solution: 解决方案
+  view: 查看
+  noReport: 暂无检测报告
+  copiedReport: 已复制检测结果
+  copyFailed: 复制失败，请手动选择
+  checkNameKey:
+    ext: "{ext} 扩展"
+    php_version: "PHP 版本 >= 8.1"
+    dir_writable: "{dir} 目录可写"
+    mysql: MySQL 连通
+    redis: Redis 连通
+    saas_bind: 云站点绑定
+  checkSuggest:
+    install_ext: "请安装 PHP 扩展 {ext}"
+    upgrade_php: 请升级 PHP 至 8.1+
+    chmod_dir: "请赋予写权限: {path}"
+    check_db: 检查 DB_* 配置
+    check_redis: 检查 Redis 配置
+    saas_optional: 未注册云站点（可选）。如需云升级或应用订阅，可前往「设置 → 云服务 → 注册站点」
+  checkAction:
+    install_ext: 安装扩展
+    upgrade_php: 升级 PHP
+    chmod_dir: 修改目录权限
+    check_db: 检查 DB_* 配置
+    check_redis: 检查 Redis 配置
+    go_register: 去注册
+cloudStore:
+  title: 应用管理
+  subtitle: 管理本站本地应用与云市场应用，按插件/应用分类查看；创始人可创建本地应用脚手架。
+  refresh: 刷新列表
+  createApp: 创建应用
+  createTitle: 创建本地应用
+  createSubmit: 创建
+  createOk: 本地应用已创建
+  createFailed: 创建失败
+  checkFailed: 标识检测失败
+  needAvailableId: 请先通过标识可用性检测
+  identifierRequired: 请填写应用标识
+  identifierPattern: 格式须为 vendor/app
+  identifierPlaceholder: 例如 swowtech/my-app
+  titleRequired: 请填写应用名称
+  titlePlaceholder: 展示名称
+  versionRequired: 请填写版本号
+  edition: 档位
+  withDemo: 含 Demo
+  withDemoHint: 写入登录演示页与示例 API
+  openStore: 打开云商城
+  goRegister: 去注册站点
+  loadFailed: 加载应用列表失败
+  remoteFailed: 云市场版本查询失败
+  openFailed: 无法打开商城
+  needBind: 请先完成云站点绑定
+  openError: 打开商城失败
+  updateAvailable: 当前分类有 {count} 项可更新
+  type: 类型
+  typeApp: 应用
+  typePlugin: 插件
+  origin: 来源
+  originLocal: 本地应用
+  originCloud: 云应用
+  identifier: 标识
+  name: 名称
+  localVersion: 本地版本
+  remoteVersion: 线上版本
+  notListed: 未上架
+  update: 更新
+  needUpdate: 需要更新
+  upToDate: 已是最新
+  author: 作者
+  status: 状态
+  installed: 已安装
+  disabled: 未启用
+settingUi:
+  notSet: 未设置
+  saveSuccess: 保存成功
+  confirm: 确定
+  tip: 提示
+  deleted: 已删除
+  clickToView: 点击查看
+  calculating: 计算中...
+  attachUnavailable: 暂无法统计
+  systemInfo: 系统信息
+  appVersion: 程序版本
+  productFamily: 产品系列
+  serverOs: 服务器系统
+  phpVersion: PHP版本
+  serverSoftware: 服务器软件
+  mysqlVersion: 服务器 MySQL 版本
+  uploadLimit: 上传许可
+  dbSize: 当前数据库尺寸
+  attachRoot: 当前附件根目录
+  attachSize: 当前附件尺寸
+  team: 开发团队
+  copyright: 版权所有
+  relatedLinks: 相关链接
+  officialSite: 官方网站
+  basedOnMine: 基于 MineAdmin（Apache-2.0）
+  tabBasic: 基本信息
+  tabIcp: 备案执照
+  basicSettings: 基本设置
+  closeSite: 关闭站点
+  closeSiteDesc: 开启后非管理端访问将被拦截；后台仍可登录以恢复
+  closeReason: 关闭原因
+  autoLogout: 自动退出
+  autoLogoutUnset: 未设置（不自动退出）
+  autoLogoutMinutes: "{n}分钟退出"
+  autoLogout30: 30分钟退出
+  autoLogout1h: 1小时退出
+  autoLogout3h: 3小时退出
+  autoLogoutDialog: 设置自动退出时间
+  autoLogoutHint: 登录状态下，若长时间无操作系统将自动退出。
+  autoLogoutNever: 不自动退出
+  autoLogoutCustom: 自行设置
+  minutes: 分钟
+  editCloseReason: 修改关闭原因
+  closeReasonPrompt: 请输入关闭站点时展示的原因
+  searchDomain: 搜索域名
+  add: 添加
+  domain: 域名
+  icpNo: ICP 备案号
+  policeNo: 公安联网备案
+  eLicense: 电子执照
+  actions: 操作
+  noIcp: 暂无添加的域名 ICP 备案号
+  noIcpHint: 建议按域名维护备案信息，便于站点页脚展示。
+  addNow: 立即添加 >
+  deleteIcpConfirm: 确认删除该备案记录吗？
+  domainRequired: 请填写域名
+  domainPlaceholder: 请填写域名
+  icpPlaceholder: 请填写备案号
+  policePlaceholder: 例如：京公网安备 1100000200001号
+  licensePlaceholder: 亮照链接
+  editIcp: 修改备案/执照信息
+  addIcp: 添加备案/执照信息
+  sectionMemberLogin: 租户成员登录/注册（不影响后台管理员）
+  memberLoginAlert: 以下规则作用于公开注册页 /login（自助开通租户）。管理后台请使用 /admin 登录。
+  userRegister: 用户注册
+  userRegisterDesc: 开启后租户前台可调用注册接口
+  auditNewUser: 审核新用户
+  auditNewUserDesc: 开启后新注册用户需管理员启用后才能登录
+  userAgreement: 用户协议
+  registerCaptcha: 注册图形验证码
+  loginCaptcha: 登录图形验证码
+  passwordStrength: 密码强度
+  defaultRole: 默认角色
+  roleId: "角色 ID: {id}"
+  roleUnspecified: 未指定
+  maxLoginDuration: 最长登录时长
+  minutesValue: "{n} 分钟"
+  unlimited: 不限制
+  pwdWeak: 弱（仅长度 ≥6）
+  pwdMedium: 中（≥8，字母+数字）
+  pwdStrong: 强（≥8，字母+数字+符号）
+  editAgreement: 修改用户协议
+  agreementPrompt: 请输入用户协议内容或链接
+  editPasswordStrength: 修改密码强度
+  passwordPrompt: 请选择密码强度：weak / medium / strong
+  passwordInvalid: 请输入 weak、medium 或 strong
+  editDefaultRole: 修改默认角色
+  defaultRolePrompt: 默认角色 ID（0 表示不绑定）
+  nonnegativeInt: 请输入非负整数
+  editLoginDuration: 修改登录时长
+  loginDurationPrompt: 最长登录时长（分钟，0 表示不限制）
+  localStrategy: 本地策略
+  uploadForceAlert: 以下限制在上传时强制校验（本地与 OSS 均生效）
+  phpEnvTitle: PHP 环境说明
+  phpUploadMax: "1. 当前 PHP 环境允许最大单个上传文件大小为: {size}"
+  phpPostMax: "2. 当前 PHP 环境允许最大 POST 表单大小为: {size}"
+  localSpace: 本地附件空间设置
+  spaceCapacity: 空间容量
+  spaceCapacityHint: 容量单位为 M，设置为 0 时不限制空间
+  thumbSettings: 附件缩略设置
+  thumbConfigSaved: 配置项已保存（缩略生成后续可扩展）
+  thumbMaxWidth: 缩略图最大宽度
+  thumbMaxWidthHint: 缩略后图片的最大宽度
+  imageSettings: 图片附件设置
+  fileExt: 支持文件后缀
+  fileSize: 支持文件大小
+  imageZip: 图片压缩
+  imageZipHint: 100 不压缩，值越大越清晰
+  avSettings: 音频视频附件设置
+  remoteAttachment: 远程附件
+  storageLocal: 本地存储
+  storageAliyun: 阿里云 OSS
+  localStorageHint: 文件保存在本机，并按 tenant/{'{'}租户ID{'}'}/app/{'{'}应用{'}'} 分目录；各应用上传也会走此规则。
+  ossPlatformTip: 此处为平台统一 OSS（创始人配置）。开启后，后台与各租户应用上传均使用该 Bucket，对象路径仍按租户/应用隔离。
+  intranetUpload: 内网上传
+  yes: 是
+  no: 否
+  customUrl: 自定义 URL
+  endpointPlaceholder: 如 oss-cn-hangzhou.aliyuncs.com
+  customUrlPlaceholder: 可选，CDN 或自定义域名
+  saveConfig: 保存配置
+  promptSpace: 空间容量
+  promptSpaceDesc: 请输入单位为 M 的容量值，设置为 0 时不限制空间
+  promptThumbWidth: 缩略图最大宽度
+  promptThumbWidthDesc: 请输入单位 px 的图片宽度
+  promptExt: 支持文件后缀
+  promptImageExtDesc: 填写图片后缀名称，如 jpg，换行输入，一行一个后缀（为空则采用系统默认）
+  promptFileSize: 支持文件大小
+  promptFileSizeDesc: 请输入单位为 KB 的值
+  promptZip: 压缩比率
+  promptZipDesc: 请输入 1 到 100 的整数，100 为不压缩，值越大越清晰
+  zipRangeError: 压缩比率须在 1 到 100 之间
+  promptAvExtDesc: 填写音频视频后缀名称，如 mp3，换行输入，一行一个后缀（为空则采用系统默认）
+  unsetSystemDefault: 未设置（采用系统默认）
+  cloudUpgrade: 系统升级
+  currentVersion: 当前版本
+  checkNow: 立即检查
+  targetVersion: 目标版本
+  changelog: 更新说明
+  noChangelog: 暂无说明
+  counts: 清单计数
+  overlayFiles: 覆盖文件
+  migrations: 数据库迁移
+  scripts: 升级脚本
+  oneClickUpdate: 一键更新
+  alreadyLatest: 当前已是最新版本
+  upgrading: 升级进行中
+  currentStep: 当前步骤
+  upgradeSuccess: 升级成功
+  upgradeFailed: 升级失败
+  upgradeSuccessMsg: 系统升级成功
+  startingUpgrade: 正在启动升级任务…
+  afterUpgradeTip: 系统更新完成后，请清空浏览器缓存或使用 Ctrl+F5 强制刷新页面，以确保加载最新前端资源。
+  agreeOfficial: 确保系统文件与官方一致，避免篡改
+  agreeBackup: 已备份并自愿承担更新风险
+  agreeLicense: 认同商业授权后商业化运营协议
+  siteBound: 站点已绑定
+  siteId: 站点 ID
+  commKey: 通信密钥
+  siteUrl: 网站 URL
+  boundAccount: 绑定账号
+  phone: 手机
+  email: 邮箱
+  boundAt: 绑定时间
+  reopenCloud: 重新打开云平台
+  enterStore: 进入云应用商城
+  cloudRegister: 云平台注册
+  cannotLoadCloudUrl: 无法加载云平台地址
+  cloudStatus: 云服务状态
+  notRegistered: 未注册
+  viewAll: 查看全部
+  resetSiteCreds: 重置站点 ID 和通信密钥
+  goRegister: 前往注册站点
+  networkDiag: 云服务网络诊断
+  refreshProbe: 刷新探测
+  serverTime: 服务器时间
+  saasReachable: SaaS 连通
+  normal: 正常
+  abnormal: 异常
+  probeUrl: 探测地址
+  viewTokenWarn: 通信密钥为敏感信息，请确认仅在必要时查看。是否继续？
+  viewTokenTitle: 查看全部
+  resetWarn: 如果您的系统没有发生云服务链接异常，请不要使用重置功能。
+  resetTitle: 重置站点 ID 和通信密钥
+  confirmReset: 确认重置
+  resetOk: 重置成功，请重新注册站点
+  notRegisteredWarn: 当前未注册云站点
+  notRegisteredMsg: 当前未注册
+  domainAddress: 域名地址
+  policeFiling: 公安备案
+  thumbEnable: 缩略设置
+  systemVersion: 系统版本
+  countsSummary: 覆盖文件 {overlay} / 数据库迁移 {migrations} / 升级脚本 {scripts}
+  spaceCapacityValue: "{n}M"
+welcomePage:
+  quickEntry: 快捷入口
+  tenantQuickEntry: 租户快捷入口
+  recentLogins: 最近登录次数
+  loginCount: 登录次数：
+  myApps: 我的应用
+  refresh: 刷新
+  noAppsHint: 暂无可用应用。可在应用管理查看本地/云应用，或由平台管理员在「租户管理」中附加。
+  loadAppsFailed: 加载可用应用失败
+  appExpired: 授权已过期，请联系平台续期
+  noAppEntry: 该应用暂无可打开的管理入口
+  openApp: 打开
+  appEnabled: 已启用
+  installedAt: 安装
+  guideTitle: 开始使用
+  guideSubtitle: 几步把站点跑起来：管应用、配站点、做环境检测。
+  guideAppsTitle: 应用管理
+  guideAppsDesc: 查看本地与云应用，创建本地应用脚手架，或前往云商城获取。
+  guideAppsAction: 进入应用管理
+  guideSiteTitle: 站点设置
+  guideSiteDesc: 配置站点名称、ICP、附件等基础信息，让前台与后台信息一致。
+  guideSiteAction: 去站点设置
+  guideCheckTitle: 系统检测
+  guideCheckDesc: 一键检查 PHP、数据库、目录权限等，排查常见运行问题。
+  guideCheckAction: 开始检测

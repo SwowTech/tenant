@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>溯源防伪</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+  <style>
+    html, body, #app { height: 100%; margin: 0; }
+    .layout { display: flex; height: 100%; }
+    .side { width: 200px; background: #0f172a; color: #e2e8f0; padding: 16px 0; }
+    .side h1 { font-size: 16px; margin: 0 16px 16px; font-weight: 600; }
+    .side a { display: block; padding: 10px 16px; color: #94a3b8; text-decoration: none; cursor: pointer; }
+    .side a.active, .side a:hover { color: #fff; background: rgb(59 130 246 / 20%); }
+    .main { flex: 1; padding: 20px; overflow: auto; background: #f8fafc; }
+    .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .stat { background: #fff; border-radius: 10px; padding: 16px; }
+    .stat .n { font-size: 24px; font-weight: 700; }
+    .stat .l { color: #64748b; font-size: 12px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="layout">
+    <aside class="side">
+      <h1>溯源防伪</h1>
+      <a :class="{ active: page === 'dashboard' }" @click="page = 'dashboard'">工作台</a>
+      <a :class="{ active: page === 'products' }" @click="page = 'products'; loadProducts()">商品</a>
+      <a :class="{ active: page === 'batches' }" @click="page = 'batches'; loadBatches()">码批次</a>
+      <a :class="{ active: page === 'query' }" @click="page = 'query'">查询核销</a>
+    </aside>
+    <main class="main" v-loading="loading">
+      <template v-if="page === 'dashboard'">
+        <div class="stats">
+          <div class="stat" v-for="s in summaryCards" :key="s.l"><div class="n">{{ s.n }}</div><div class="l">{{ s.l }}</div></div>
+        </div>
+      </template>
+
+      <template v-else-if="page === 'products'">
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+          <strong>商品列表</strong>
+          <el-button type="primary" @click="openProduct()">新建商品</el-button>
+        </div>
+        <div class="card">
+          <el-table :data="products" stripe>
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="name" label="名称" />
+            <el-table-column prop="code" label="编码" />
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">{{ Number(row.status) === 1 ? '启用' : '停用' }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="120">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="openProduct(row)">编辑</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </template>
+
+      <template v-else-if="page === 'batches'">
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+          <strong>码批次</strong>
+          <el-button type="primary" @click="openBatch()">生成批次</el-button>
+        </div>
+        <div class="card">
+          <el-table :data="batches" stripe>
+            <el-table-column prop="batch_no" label="批次号" />
+            <el-table-column prop="product_name" label="商品" />
+            <el-table-column prop="quantity" label="数量" width="100" />
+            <el-table-column prop="created_at" label="创建时间" width="180" />
+            <el-table-column label="操作" width="140">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="viewCodes(row)">查看码</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </template>
+
+      <template v-else-if="page === 'query'">
+        <div class="card">
+          <el-form inline @submit.prevent>
+            <el-form-item label="溯源码">
+              <el-input v-model="queryCode" placeholder="输入码" style="width:260px" />
+            </el-form-item>
+            <el-button type="primary" @click="doLookup">查询</el-button>
+            <el-button type="warning" :disabled="!lookup" @click="doWriteoff">核销</el-button>
+          </el-form>
+          <el-descriptions v-if="lookup" :column="2" border style="margin-top:16px">
+            <el-descriptions-item label="码">{{ lookup.code }}</el-descriptions-item>
+            <el-descriptions-item label="状态">{{ Number(lookup.status) === 2 ? '已核销' : '未核销' }}</el-descriptions-item>
+            <el-descriptions-item label="商品">{{ lookup.product_name }}</el-descriptions-item>
+            <el-descriptions-item label="批次">{{ lookup.batch_no }}</el-descriptions-item>
+            <el-descriptions-item label="生成时间">{{ lookup.created_at }}</el-descriptions-item>
+            <el-descriptions-item label="核销时间">{{ lookup.written_off_at || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </template>
+    </main>
+  </div>
+
+  <el-dialog v-model="productDlg" :title="productForm.id ? '编辑商品' : '新建商品'" width="480px">
+    <el-form label-width="80px">
+      <el-form-item label="名称"><el-input v-model="productForm.name" /></el-form-item>
+      <el-form-item label="编码"><el-input v-model="productForm.code" /></el-form-item>
+      <el-form-item label="备注"><el-input v-model="productForm.remark" /></el-form-item>
+      <el-form-item label="状态">
+        <el-select v-model="productForm.status" style="width:100%">
+          <el-option :value="1" label="启用" /><el-option :value="2" label="停用" />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="productDlg=false">取消</el-button>
+      <el-button type="primary" @click="saveProduct">保存</el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="batchDlg" title="生成批次" width="480px">
+    <el-form label-width="80px">
+      <el-form-item label="商品">
+        <el-select v-model="batchForm.product_id" filterable style="width:100%">
+          <el-option v-for="p in products" :key="p.id" :label="p.name" :value="Number(p.id)" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="数量"><el-input-number v-model="batchForm.quantity" :min="1" :max="5000" /></el-form-item>
+      <el-form-item label="批次号"><el-input v-model="batchForm.batch_no" placeholder="可空自动生成" /></el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="batchDlg=false">取消</el-button>
+      <el-button type="primary" @click="saveBatch">生成</el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="codesDlg" title="批次码列表" width="640px">
+    <el-table :data="codes" height="360" stripe>
+      <el-table-column prop="code" label="码" />
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">{{ Number(row.status) === 2 ? '已核销' : '未核销' }}</template>
+      </el-table-column>
+    </el-table>
+  </el-dialog>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus"></script>
+<script>
+const { createApp, ref, computed, onMounted } = Vue
+const base = document.querySelector('base')?.href || location.pathname.replace(/\/[^/]*$/, '/')
+createApp({
+  setup() {
+    const page = ref('dashboard')
+    const loading = ref(false)
+    const summary = ref({})
+    const products = ref([])
+    const batches = ref([])
+    const codes = ref([])
+    const queryCode = ref('')
+    const lookup = ref(null)
+    const productDlg = ref(false)
+    const batchDlg = ref(false)
+    const codesDlg = ref(false)
+    const productForm = ref({ id: null, name: '', code: '', remark: '', status: 1 })
+    const batchForm = ref({ product_id: null, quantity: 100, batch_no: '' })
+
+    const summaryCards = computed(() => [
+      { n: summary.value.products ?? 0, l: '商品数' },
+      { n: summary.value.codes ?? 0, l: '总码量' },
+      { n: summary.value.written_off ?? 0, l: '已核销' },
+      { n: summary.value.today_codes ?? 0, l: '今日生成' },
+      { n: summary.value.today_writeoff ?? 0, l: '今日核销' },
+    ])
+
+    async function api(path, opts = {}) {
+      loading.value = true
+      try {
+        const res = await fetch('api/' + path.replace(/^\/?api\//, ''), {
+          ...opts,
+          headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        })
+        const json = await res.json()
+        if (!res.ok || (json.code && json.code !== 200)) {
+          ElementPlus.ElMessage.error(json.message || '请求失败')
+          throw new Error(json.message || 'fail')
+        }
+        return json.data
+      } finally {
+        loading.value = false
+      }
+    }
+
+    async function loadDashboard() { summary.value = await api('dashboard/summary') }
+    async function loadProducts() { products.value = await api('products') }
+    async function loadBatches() { batches.value = await api('batches') }
+
+    function openProduct(row) {
+      productForm.value = row
+        ? { id: Number(row.id), name: row.name, code: row.code, remark: row.remark, status: Number(row.status) }
+        : { id: null, name: '', code: '', remark: '', status: 1 }
+      productDlg.value = true
+    }
+    async function saveProduct() {
+      const f = productForm.value
+      if (f.id) await api('products/' + f.id, { method: 'PUT', body: JSON.stringify(f) })
+      else await api('products', { method: 'POST', body: JSON.stringify(f) })
+      productDlg.value = false
+      ElementPlus.ElMessage.success('已保存')
+      await loadProducts()
+      await loadDashboard()
+    }
+
+    async function openBatch() {
+      if (!products.value.length) await loadProducts()
+      batchForm.value = { product_id: products.value[0] ? Number(products.value[0].id) : null, quantity: 100, batch_no: '' }
+      batchDlg.value = true
+    }
+    async function saveBatch() {
+      await api('batches', { method: 'POST', body: JSON.stringify(batchForm.value) })
+      batchDlg.value = false
+      ElementPlus.ElMessage.success('批次已生成')
+      await loadBatches()
+      await loadDashboard()
+    }
+    async function viewCodes(row) {
+      codes.value = await api('batches/' + row.id + '/codes')
+      codesDlg.value = true
+    }
+
+    async function doLookup() {
+      if (!queryCode.value.trim()) return
+      lookup.value = await api('codes/' + encodeURIComponent(queryCode.value.trim()))
+    }
+    async function doWriteoff() {
+      if (!lookup.value) return
+      await ElementPlus.ElMessageBox.confirm('确认核销该码？', '核销')
+      lookup.value = await api('codes/' + encodeURIComponent(lookup.value.code) + '/writeoff', {
+        method: 'POST', body: JSON.stringify({ operator: 'admin' }),
+      })
+      ElementPlus.ElMessage.success('核销成功')
+      await loadDashboard()
+    }
+
+    onMounted(async () => {
+      try { await loadDashboard() } catch (e) {}
+    })
+
+    return {
+      page, loading, summary, summaryCards, products, batches, codes, queryCode, lookup,
+      productDlg, batchDlg, codesDlg, productForm, batchForm,
+      loadProducts, loadBatches, openProduct, saveProduct, openBatch, saveBatch, viewCodes, doLookup, doWriteoff,
+    }
+  }
+}).use(ElementPlus).mount('#app')
+</script>
+</body>
+</html>

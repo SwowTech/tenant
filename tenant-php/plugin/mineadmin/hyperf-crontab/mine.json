@@ -1,0 +1,25 @@
+{
+  "name": "mineadmin/hyperf-crontab",
+  "version": "1.0.0",
+  "type": "mixed",
+  "description": "MineAdmin 定时任务应用",
+  "author": [
+    {
+      "name": "MineAdmin"
+    }
+  ],
+  "composer": {
+    "require": {
+      "mineadmin/crontab": "~3.0"
+    },
+    "psr-4": {
+      "Plugin\\MineAdmin\\Crontab\\": "src"
+    },
+    "installScript": "Plugin\\MineAdmin\\Crontab\\InstallScript",
+    "uninstallScript": "Plugin\\MineAdmin\\Crontab\\UninstallScript",
+    "config": "Plugin\\MineAdmin\\Crontab\\ConfigProvider"
+  },
+  "package": {
+    "dependencies": []
+  }
+}

@@ -1,0 +1,822 @@
+loginForm:
+  loginButton: 登錄
+  passwordPlaceholder: 請輸入密碼
+  codeLabel: 驗證碼
+  usernameLabel: 賬戶
+  codePlaceholder: 請輸入驗證碼
+  usernamePlaceholder: 請輸入賬戶
+  passwordLabel: 密碼
+tenantLogin:
+  title: 租戶登錄
+  subtitle: 訪問多租戶管理控制台
+  tabLogin: 登錄
+  tabRegister: 註冊
+  tenantDomain: 租戶標識
+  tenantDomainPlaceholder: 註冊時的域名標識
+  tenantDomainLockedHint: 已由當前訪問域名識別
+  username: 賬號
+  usernamePlaceholder: 用戶名
+  password: 密碼
+  passwordPlaceholder: 請輸入密碼
+  submitLogin: 立即登錄
+  submitRegister: 註冊並開通
+  name: 名稱
+  namePlaceholder: 站點 / 租戶名稱
+  domain: 域名標識
+  domainPlaceholder: 子域，可改
+  suggestDomain: 換一個
+  customDomain: 自訂域名
+  customDomainPlaceholder: 可選，不填請留空
+  phone: 聯繫電話
+  email: 聯繫郵箱
+  remark: 備註
+  remarkPlaceholder: 可選
+  adminUser: 管理員賬號
+  adminPass: 管理員密碼
+  adminPassPlaceholder: 至少 8 位，字母+數字
+  registerSuccess: 註冊成功，請使用管理員賬號登錄
+  tenantRequired: 請輸入租戶標識
+  tenantResolveFailed: 無法識別租戶
+mineAdmin:
+  goHome: 回到首頁
+  settings:
+    copyRights:
+      date: 時間
+      website: 網址
+      enable: 啟用版權
+      putOnRecord: 備案號
+      company: 公司
+    primaryColorSetting: 主顏色設置
+    toolBarSettings: 工具列設置
+    tabBarSettings: 標籤列設置
+    save: 保存設置
+    colorMode: 顏色模式
+    layoutSetting: 佈局設置
+    title: 後臺設置
+    layouts:
+      classic: 經典佈局
+      columns: 分欄佈局
+      mixed: 混合佈局
+    watermarkText: 水印文字
+    colorModes:
+      system: 系統
+      light: 明亮
+      dark: 黑暗
+    mainAsideSetting: 主側欄設置
+    enableWatermark: 啟用水印
+    otherSettings: 其他設置
+    mainAsides:
+      autoToFirstMenu: 自動進入第一個功能表
+      mainMenuTitle: 主功能表標題
+    subAsideSetting: 側欄摺疊互動
+    subAsides:
+      collapseSubMenuMode: 摺疊後點擊選單
+      collapseModePopup: 彈出選單
+      collapseModeAside: 右側列表
+    copyRightSettings: 版權設置
+    enableBreadcrumb: 啟用麵包屑
+    asideDark: 側邊欄黑暗模式
+    tabbars:
+      mode: 標籤欄風格
+      modeCard: 卡片
+      enable: 啟用標籤列
+      modeDefault: 預設
+  shortcuts:
+    switchN: 切換到N頁
+    switchLast: 切換最後一個
+    searchOpen: 叫出
+    searchBar: 搜尋欄
+    tabs: 標籤頁
+    close: 關閉
+    exitMax: 退出最大化
+    toMax: 進入最大化
+  runtime:
+    devDependencies: 開發依賴
+    pluginList: 插件列表
+    pluginCount: 插件總數
+    systemVersion: 系統版本
+    coreInfo: 核心信息
+    dependencies: 生產依賴
+    lastBuildTime: 最後構建時間
+  sys:
+    notComponent: 沒有找到頁面，無法跳轉
+    unknown: 未知
+  uc:
+    shortBackControl: 返回
+    backControl: 返回控制面板
+    setAllRead: 全部設爲已讀
+    title: 用戶中心
+  notification:
+    todo: 待辦
+    allRead: 全部已讀
+    gotoTheList: 轉到列表
+    message: 消息
+    notice: 通知
+  search:
+    placeholder: 搜索頁面，支持名稱、標識以及URL的模糊查詢
+    noNameMenu: 未命名菜單
+    notResult: 沒有搜索到頁面
+  userBar:
+    showState: 顯示用戶欄
+    hideState: 隱藏用戶欄
+    systemInfo: 系統信息
+    logout: 退出系統
+    shortcuts: 快捷鍵介紹
+    clearCache: 清除緩存
+    uc: 用戶中心
+  common:
+    saveSuccess: 儲存成功
+    clearCache: 緩存已清空
+  plugin:
+    disabled: 已禁用
+    enabled: 已啓用
+  tab:
+    cannotUnfixed: 此標簽不能取消固定
+    favorites: 標簽頁收藏夾
+    addFavorite: 加入到收藏夾
+    fullscreen: 全屏標籤頁
+    closeLeft: 關閉左側標籤頁
+    closeOther: 關閉其他標籤頁
+    closeRight: 關閉右側標籤頁
+    refresh: 刷新標籤頁
+    fixed: 固定標籤頁
+    has: 此標簽頁已收藏過
+    noFavorite: 還沒有收藏任何標簽頁
+    close: 關閉標籤頁
+  slogan: 開源租戶站點框架
+  toolbars:
+    notification: 通知
+    settings: 設置
+    search: 搜索
+    fullscreen: 全屏
+    sorts: 工具列排序
+    switchMode: 切換顏色模式
+    translate: 國際化
+  mark: 開箱即用
+menu:
+  "uc:index": 首頁
+  "dashboard:analysis": 分析頁
+  pageError: 頁面出現了錯誤
+  appstore: 應用商店
+  "dashboard:workbench": 工作臺
+  "dashboard:report": 統計報表
+  "uc:logs": 日志
+  login: 登錄
+  "uc:message": 消息
+  welcome: 歡迎頁
+  systemCheck: 系統常規檢測
+  dashboard: 儀表盤
+  founder: 租戶管理
+  "founder:tenants": 租戶列表
+  "founder:app-domains": 應用域名
+  setting: 站點設置
+  "setting:cloud": 雲服務
+  "setting:cloud:store": 應用管理
+  "setting:cloud:upgrade": 系統升級
+  "setting:cloud:register": 註冊站點
+  "setting:cloud-diagnose": 雲服務診斷
+  "setting:group": 設置
+  "setting:site": 站點設置
+  "setting:site:page": 站點設置
+  "setting:attachment": 附件設置
+  "setting:attachment:page": 附件設置
+  "setting:systeminfo": 系統信息
+  "setting:systeminfo:page": 系統信息
+  "setting:user-login": 用戶登錄/註冊設置
+  "setting:user-login:page": 用戶登錄/註冊設置
+  "setting:tools": 常用工具
+  "setting:tools:database": 數據庫
+  "setting:system-check": 系統常規檢測
+  "setting:job": 後台任務
+  "apps:mine": 我的應用
+crud:
+  cancel: 放棄
+  save: 保存
+  ok: 確定
+  add: 新增
+  edit: 編輯
+  delete: 删除
+  search: 檢索
+  reset: 重設
+  submit: 提交
+  searchFold: 摺疊
+  searchUnFold: 展開
+  selection: 多選
+  operation: 操作
+  createSuccess: 創建成功
+  updateSuccess: 修改成功
+  delMessage: 是否刪除所選中數據？
+  delDataMessage: 是否刪除數據？
+  delNoData: 至少要選擇一行數據
+  delSuccess: 刪除成功
+  status: 狀態
+  remark: 備注
+  sort: 排序
+  createTime: 創建時間
+  updateTime: 更新時間
+  exportMessage: 是否確認導出數據？
+  importMessage: 是否確認導入數據？
+  confirmTitle: 系統提示
+  confirmMessage: 確認要%{msg}嗎？
+  noPermission: 沒有權限訪問頁面或使用此功能
+  userNotAllow: 目前用戶無法訪問或使用此功能
+  superAdminNoEdit: 超管不可修改
+form:
+  pleaseInput: 請輸入{msg}
+  pleaseSelect: 請選擇{msg}
+  requiredInput: '{msg}必填'
+  requiredSelect: '{msg}必選'
+dictionary:
+  system:
+    statusEnabled: 啓用
+    statusDisabled: 禁用
+    successState: 成功
+    failState: 失敗
+  base:
+    systemUser: 系統用戶
+    normalUser: 普通用戶
+  dataScope:
+    all: 全部數據權限
+    deptSelf: 本部門數據權限
+    deptTree: 本部門及所有子部門數據權限
+    self: 本人數據權限
+    customDept: 自選部門數據權限
+    customFunc: 自定義數據權限
+dashboardPage:
+  loadFailed: 加載失敗
+  analysisLoadFailed: 分析頁加載失敗
+  reportLoadFailed: 統計報表加載失敗
+  mom: 環比
+  rank: 排名
+  account: 賬號
+  opsCount: 操作次數
+  tenantLabel: 租戶
+  domain: 域名
+  status: 狀態
+  unknown: 未知
+  tenantStatus: 租戶狀態
+  browserDist: 瀏覽器分佈
+  appEnableRank: 應用啓用排行
+  hotBiz: 熱門業務
+  statusActive: 正常
+  statusDisabled: 停用
+  statusProvisioning: 開通中
+  statusFailed: 失敗
+  platform:
+    page_title: 平台總覽
+    report_title: 平台統計報表
+    trend_title: 近14日新建租戶
+    ranking_title: 最近開通租戶
+    pie_title: 租戶狀態分佈
+  tenant:
+    page_title: 租戶運營概覽
+    report_title: 租戶統計報表
+    trend_title: 近14日登錄與操作
+    ranking_title: 近7日活躍賬號
+    pie_title: 登錄成功/失敗
+  site:
+    page_title: 本站概覽
+    report_title: 本站統計報表
+    trend_title: 近14日登錄與操作
+    ranking_title: 近7日活躍賬號
+    pie_title: 登錄成功/失敗
+  kpi:
+    users: 用戶總數
+    logins: 近7日登錄成功
+    ops: 近7日操作次數
+    attachments: 附件數
+    tenants: 租戶總數
+    active: 正常租戶
+    pending: 開通中/失敗
+    apps: 已啓用應用實例
+  series:
+    login_ok: 登錄成功
+    ops: 操作次數
+    new_users: 新增用戶
+    new_tenants: 新建租戶
+  pie:
+    success: 成功
+    fail: 失敗
+    active: 正常
+    disabled: 停用
+    pending: 開通中/失敗
+    bound: 已綁定
+    unbound: 未綁定
+  summary:
+    logins_30: 近30日登錄
+    ops_30: 近30日操作
+    new_users_30: 近30日新增用戶
+    retention_7: 近7日留存用戶
+    tenants: 租戶總數
+    active: 正常租戶
+    pending: 開通中/失敗
+    custom_domain: 已綁自定義域
+  item:
+    week_login: 本周登錄趨勢
+    week_ops: 本周操作趨勢
+    retention_7: 近7日留存用戶
+    attach_7: 附件近7日新增
+    provision_30: 近30日開通趨勢
+    app_rank: 租戶應用啓用排行
+    domain_bind: 域名綁定
+    status_dist: 狀態分佈
+  axis:
+    bound: 已綁定
+    unbound: 未綁定
+    active: 正常
+    disabled: 停用
+    pending: 異常
+founderTenants:
+  forbidden: 僅創始人可訪問此頁面
+  name: 名稱
+  code: 編碼
+  status: 狀態
+  namePlaceholder: 租戶名稱
+  codePlaceholder: 租戶編碼
+  all: 全部
+  addTenant: 新增租戶
+  editTenant: 編輯租戶
+  accessDomain: 訪問域名
+  domain: 域名
+  prefix: 前綴
+  copy: 複製
+  copied: 已複製
+  copyFailed: 複製失敗
+  assignApp: 附加應用
+  enterTenant: 進入租戶管理
+  enable: 啓用
+  disable: 停用
+  reprovision: 重試開通
+  domainLabel: 域名標識
+  domainPlaceholder: 子域，可改；未填自定義域名時用此項
+  customDomain: 自定義域名
+  customDomainPlaceholder: 可選，不填請留空
+  contactPhone: 聯繫電話
+  contactEmail: 聯繫郵箱
+  remark: 備註
+  adminUser: 管理員賬號
+  adminPass: 管理員密碼
+  suggestAnother: 換一個
+  attached: 已附加
+  add: 添加
+  app: 應用
+  version: 版本
+  expires: 有效期
+  forever: 永久
+  expired: 已過期
+  modify: 修改
+  selectApps: 選擇要附加的應用
+  licensePeriod: 授權有效期
+  licensePeriodRecalc: 授權有效期（從現在起重新計算）
+  year: 年
+  month: 月
+  licenseHint: 年、月可組合（如 1 年 6 月）；都為 0 表示永久。重新附加會刷新到期時間。
+  assign: 附加
+  editAttached: 修改已附加應用
+  current: 當前
+  until: 至 {date}
+  expiredUntil: 已過期（至 {date}）
+  tenantLine: "租戶：{name}（{prefix}）"
+  statusActive: 正常
+  statusDisabled: 停用
+  statusProvisioning: 開通中
+  statusFailed: 開通失敗
+  licenseForever: 永久
+  license1m: 1 個月
+  license3m: 3 個月
+  license6m: 6 個月
+  license1y: 1 年
+  license2y: 2 年
+  license3y: 3 年
+  licenseCustom: 自定義（年+月）
+  msgUpdated: 已更新
+  msgUpdateOk: 更新成功
+  msgCreateOk: 創建並開通成功
+  msgEnabled: 已啓用
+  msgDisabled: 已停用
+  msgReprovisionOk: 重試開通成功
+  msgAssignOk: 附加成功
+  msgNeedActiveAssign: 請先開通或啓用租戶後再附加應用
+  msgNeedActiveEnter: 請先開通或啓用租戶後再進入
+  msgSelectApp: 請選擇要附加的應用
+  msgEnterFailed: 進入租戶失敗
+  msgSuggestFailed: 隨機域名獲取失敗，請手動填寫
+  msgDomainRequired: 請輸入域名標識
+  msgDomainFormat: 僅支持小寫字母、數字、連字符
+  msgDomainExists: 域名標識已存在
+  msgDomainCheckFailed: 域名檢測失敗，請稍後重試
+  msgNameRequired: 請輸入名稱
+  msgAdminUserRequired: 請輸入管理員賬號
+  msgAdminPassRequired: 請輸入管理員密碼
+appDomains:
+  tenantHint: 可為已安裝應用綁定多個獨立域名；DNS/hosts 指向本機後即可用域名直達應用。
+  filterTenant: 篩選租戶
+  filterApp: 應用標識 vendor/app
+  search: 查詢
+  bind: 綁定域名
+  tenant: 租戶
+  app: 應用
+  domain: 域名
+  scheme: 協議
+  primary: 主域名
+  yes: 是
+  setPrimary: 設為主
+  publicBase: 訪問根地址
+  actions: 操作
+  edit: 編輯
+  unbind: 解綁
+  cancel: 取消
+  save: 保存
+  bindTitle: 綁定應用域名
+  editTitle: 編輯應用域名
+  domainPlaceholder: "如 sy.example.com（不含端口）"
+  dnsTitle: "DNS / hosts 怎麼配"
+  dnsLocal: "本機開發：把下面一行寫入 hosts（需管理員權限），再用帶端口的地址訪問。"
+  dnsLocalHosts: "127.0.0.1  {domain}"
+  dnsLocalOpen: "訪問地址：{url}"
+  dnsProd: "正式環境：在域名服務商新增解析，把域名指到本伺服器公網 IP（或經 Nginx/Caddy 反代到閘道端口）。"
+  dnsProdA: "A 記錄：主機記錄填子域（如 sy），值填伺服器 IP；根域用 {'@'}。"
+  dnsProdCname: "也可 CNAME 到已解析的主站域名（若服務商支援）。"
+  dnsProdPort: "對外若只用 80/443，請用反向代理把 {domain} 轉到閘道端口 {port}；開發直連請訪問 {url}。"
+  dnsEmpty: "先填寫域名後，這裡會顯示具體設定提示。"
+  tenantRequired: 請選擇租戶
+  appRequired: 請選擇應用
+  domainRequired: 請輸入域名
+  created: 綁定成功
+  updated: 已更新
+  deleted: 已解綁
+  setPrimaryOk: 已設為主域名
+  saveFailed: 保存失敗
+  deleteFailed: 解綁失敗
+  deleteTitle: 解綁域名
+  deleteConfirm: "確定解綁域名 {domain}？"
+  noApps: 當前租戶尚未安裝應用
+appsEdition:
+  family: 應用家族
+  edition: 檔位
+  migrateData: 遷移數據
+  migrateConfirm: 將從 {from} 遷移數據到 {to}，不會停用舊應用
+  standard: 標準
+appsMine:
+  settings: 設置
+  domainSection: 綁定域名
+  passwordSection: 管理員密碼
+  adminUser: 管理員帳號
+  newPassword: 新密碼
+  confirmPassword: 確認密碼
+  savePassword: 保存密碼
+  passwordRequired: 請輸入新密碼
+  passwordMin: 密碼至少 6 位
+  passwordConfirmRequired: 請再次輸入密碼
+  passwordMismatch: 兩次輸入的密碼不一致
+  passwordChanged: 應用管理員密碼已更新
+  passwordFailed: 修改密碼失敗
+  passwordUnsupported: 該應用暫不支持在此修改管理員密碼，請進入應用後台修改
+  loadSettingsFailed: 加載應用設置失敗
+settingTools:
+  databaseTitle: 數據庫
+  databaseAlert: 使用本系統備份的數據，只能用本系統還原。請在低峰期操作；還原會覆蓋現有數據。
+  tabBackup: 備份
+  tabRestore: 還原
+  tabOptimize: 優化
+  backupDesc: 將導出當前上下文可見的數據表（進入租戶時僅備份該租戶前綴表）。備份文件保存在服務端
+  visibleTables: 當前可見表：{count} 張
+  startBackup: 開始備份
+  backupConfirmTitle: 開始備份
+  backupConfirmMsg: 請在訪問量較低時操作。備份僅可用本系統還原，請勿手動改 SQL。是否開始備份？
+  backupPreparing: 正在準備備份…
+  backupFailed: 備份失敗
+  backupDone: 備份完成
+  backupInterrupted: 備份中斷
+  restoreDesc: 還原後建議刷新頁面並檢查業務數據。
+  backupName: 備份名稱
+  backupTime: 備份時間
+  volumeCount: 分卷數量
+  size: 大小
+  tablePrefix: 表前綴
+  restoreThis: 還原此備份
+  noBackups: 暫無備份
+  restoreConfirmTitle: 還原備份
+  restoreConfirmMsg: 確定將數據庫還原到 {time} 的備份嗎？當前數據將被覆蓋，請謹慎操作！
+  restoreConfirmBtn: 確定還原
+  restoring: 正在還原…
+  restoreFailed: 還原失敗
+  restoreDone: 還原完成
+  deleteBackupTitle: 刪除備份
+  deleteBackupMsg: 確認刪除備份 {name}？
+  deleted: 已刪除
+  deleteFailed: 刪除失敗
+  optimizeAlert: 數據表優化可減少碎片、提高讀寫效率。默認勾選存在碎片（Data_free > 0）的表。
+  startOptimize: 開始優化
+  selectAll: 全選
+  clearSelection: 清空
+  tableName: 表名
+  engine: 引擎
+  rows: 記錄數
+  dataSize: 數據尺寸
+  indexSize: 索引尺寸
+  freeSize: 碎片尺寸
+  selectTables: 請選擇要優化的表
+  optimizedCount: 已優化 {count} 張表
+  optimizeFailed: 優化失敗
+  systemCheckTitle: 系統常規檢測
+  runCheck: 檢測
+  copyResult: 複製結果
+  checkSummary: 全部檢測{total}項，錯誤檢測項{wrong}項
+  checkName: 檢測項名稱
+  checkResult: 檢測結果
+  checkOk: 正確
+  checkFail: 錯誤
+  suggestion: 解決建議
+  suggestedAction: 建議操作
+  solution: 解決方案
+  view: 查看
+  noReport: 暫無檢測報告
+  copiedReport: 已複製檢測結果
+  copyFailed: 複製失敗，請手動選擇
+  checkNameKey:
+    ext: "{ext} 擴展"
+    php_version: "PHP 版本 >= 8.1"
+    dir_writable: "{dir} 目錄可寫"
+    mysql: MySQL 連通
+    redis: Redis 連通
+    saas_bind: 雲站點綁定
+  checkSuggest:
+    install_ext: "請安裝 PHP 擴展 {ext}"
+    upgrade_php: 請升級 PHP 至 8.1+
+    chmod_dir: "請賦予寫權限: {path}"
+    check_db: 檢查 DB_* 配置
+    check_redis: 檢查 Redis 配置
+    saas_optional: 未註冊雲站點（可選）。如需雲升級或應用訂閱，可前往「設置 → 雲服務 → 註冊站點」
+  checkAction:
+    install_ext: 安裝擴展
+    upgrade_php: 升級 PHP
+    chmod_dir: 修改目錄權限
+    check_db: 檢查 DB_* 配置
+    check_redis: 檢查 Redis 配置
+    go_register: 去註冊
+cloudStore:
+  title: 應用管理
+  subtitle: 管理本站本地應用與雲市場應用，按插件/應用分類查看；創始人可創建本地應用腳手架。
+  refresh: 刷新列表
+  createApp: 創建應用
+  createTitle: 創建本地應用
+  createSubmit: 創建
+  createOk: 本地應用已創建
+  createFailed: 創建失敗
+  checkFailed: 標識檢測失敗
+  needAvailableId: 請先通過標識可用性檢測
+  identifierRequired: 請填寫應用標識
+  identifierPattern: 格式須為 vendor/app
+  identifierPlaceholder: 例如 swowtech/my-app
+  titleRequired: 請填寫應用名稱
+  titlePlaceholder: 展示名稱
+  versionRequired: 請填寫版本號
+  edition: 檔位
+  withDemo: 含 Demo
+  withDemoHint: 寫入登入演示頁與示例 API
+  openStore: 打開雲商城
+  goRegister: 去註冊站點
+  loadFailed: 加載應用列表失敗
+  remoteFailed: 雲市場版本查詢失敗
+  openFailed: 無法打開商城
+  needBind: 請先完成雲站點綁定
+  openError: 打開商城失敗
+  updateAvailable: 當前分類有 {count} 項可更新
+  type: 類型
+  typeApp: 應用
+  typePlugin: 插件
+  origin: 來源
+  originLocal: 本地應用
+  originCloud: 雲應用
+  identifier: 標識
+  name: 名稱
+  localVersion: 本地版本
+  remoteVersion: 線上版本
+  notListed: 未上架
+  update: 更新
+  needUpdate: 需要更新
+  upToDate: 已是最新
+  author: 作者
+  status: 狀態
+  installed: 已安裝
+  disabled: 未啓用
+settingUi:
+  notSet: 未設置
+  saveSuccess: 保存成功
+  confirm: 確定
+  tip: 提示
+  deleted: 已刪除
+  clickToView: 點擊查看
+  calculating: 計算中...
+  attachUnavailable: 暫無法統計
+  systemInfo: 系統信息
+  appVersion: 程序版本
+  productFamily: 產品系列
+  serverOs: 伺服器系统
+  phpVersion: PHP版本
+  serverSoftware: 伺服器软件
+  mysqlVersion: 伺服器 MySQL 版本
+  uploadLimit: 上傳許可
+  dbSize: 當前數據庫尺寸
+  attachRoot: 當前附件根目录
+  attachSize: 當前附件尺寸
+  team: 開發團隊
+  copyright: 版權所有
+  relatedLinks: 相關連結
+  officialSite: 官方網站
+  basedOnMine: 基於 MineAdmin（Apache-2.0）
+  tabBasic: 基本信息
+  tabIcp: 備案執照
+  basicSettings: 基本設置
+  closeSite: 關閉站點
+  closeSiteDesc: 開啟後非管理端訪問將被攔截；後台仍可登錄以恢復
+  closeReason: 關閉原因
+  autoLogout: 自動退出
+  autoLogoutUnset: 未設置（不自動退出）
+  autoLogoutMinutes: "{n}分鐘退出"
+  autoLogout30: 30分鐘退出
+  autoLogout1h: 1小時退出
+  autoLogout3h: 3小時退出
+  autoLogoutDialog: 設置自動退出时间
+  autoLogoutHint: 登录状态下，若长时间无操作系统将自動退出。
+  autoLogoutNever: 不自動退出
+  autoLogoutCustom: 自行設置
+  minutes: 分鐘
+  editCloseReason: 修改關閉原因
+  closeReasonPrompt: 請輸入關閉站點时展示的原因
+  searchDomain: 搜索域名
+  add: 添加
+  domain: 域名
+  icpNo: ICP 備案號
+  policeNo: 公安聯網備案
+  eLicense: 電子執照
+  actions: 操作
+  noIcp: 暂无添加的域名 ICP 備案號
+  noIcpHint: 建議按域名維護備案信息，便於站點頁腳展示。
+  addNow: 立即添加 >
+  deleteIcpConfirm: 確認刪除該備案記錄嗎？
+  domainRequired: 請填寫域名
+  domainPlaceholder: 請填寫域名
+  icpPlaceholder: 请填写備案號
+  policePlaceholder: 例如：京公網安備 1100000200001號
+  licensePlaceholder: 亮照連結
+  editIcp: 修改備案/執照信息
+  addIcp: 添加備案/執照信息
+  sectionMemberLogin: 租戶成員登錄/註冊（不影響後台管理員）
+  memberLoginAlert: 以下規則作用於公開註冊頁 /login（自助開通租戶）。管理後台請使用 /admin 登錄。
+  userRegister: 用戶註冊
+  userRegisterDesc: 開啟後租戶前台可調用註冊接口
+  auditNewUser: 審核新用戶
+  auditNewUserDesc: 開啟後新註冊用戶需管理員啟用後才能登錄
+  userAgreement: 用戶協議
+  registerCaptcha: 註冊圖形驗證碼
+  loginCaptcha: 登錄圖形驗證碼
+  passwordStrength: 密碼強度
+  defaultRole: 默認角色
+  roleId: "角色 ID: {id}"
+  roleUnspecified: 未指定
+  maxLoginDuration: 最長登錄時長
+  minutesValue: "{n} 分鐘"
+  unlimited: 不限制
+  pwdWeak: 弱（僅長度 ≥6）
+  pwdMedium: 中（≥8，字母+數字）
+  pwdStrong: 強（≥8，字母+數字+符號）
+  editAgreement: 修改用戶協議
+  agreementPrompt: 請輸入用戶協議内容或链接
+  editPasswordStrength: 修改密碼強度
+  passwordPrompt: 请选择密碼強度：weak / medium / strong
+  passwordInvalid: 請輸入 weak、medium 或 strong
+  editDefaultRole: 修改默認角色
+  defaultRolePrompt: 默認角色 ID（0 表示不绑定）
+  nonnegativeInt: 請輸入非负整数
+  editLoginDuration: 修改登錄時長
+  loginDurationPrompt: 最長登錄時長（分鐘，0 表示不限制）
+  localStrategy: 本地策略
+  uploadForceAlert: 以下限制在上傳時強制校驗（本地與 OSS 均生效）
+  phpEnvTitle: PHP 環境說明
+  phpUploadMax: "1. 當前 PHP 环境允许最大单个上传文件大小为: {size}"
+  phpPostMax: "2. 當前 PHP 环境允许最大 POST 表单大小为: {size}"
+  localSpace: 本地附件空间設置
+  spaceCapacity: 空間容量
+  spaceCapacityHint: 容量单位为 M，設置为 0 时不限制空间
+  thumbSettings: 附件缩略設置
+  thumbConfigSaved: 配置項已保存（縮略生成後續可擴展）
+  thumbMaxWidth: 縮略圖最大寬度
+  thumbMaxWidthHint: 縮略後圖片的最大寬度
+  imageSettings: 图片附件設置
+  fileExt: 支持文件後綴
+  fileSize: 支持文件大小
+  imageZip: 圖片壓縮
+  imageZipHint: 100 不壓縮，值越大越清晰
+  avSettings: 音频视频附件設置
+  remoteAttachment: 遠程附件
+  storageLocal: 本地存儲
+  storageAliyun: 阿里云 OSS
+  localStorageHint: 文件保存在本機，並按 tenant/{'{'}租戶ID{'}'}/app/{'{'}應用{'}'} 分目錄；各應用上傳也走此規則。
+  ossPlatformTip: 此處為平台統一 OSS（創始人配置）。開啟後，後台與各租戶應用上傳均使用該 Bucket，對象路徑仍按租戶/應用隔離。
+  intranetUpload: 內網上傳
+  yes: 是
+  no: 否
+  customUrl: 自定義 URL
+  endpointPlaceholder: 如 oss-cn-hangzhou.aliyuncs.com
+  customUrlPlaceholder: 可选，CDN 或自定義域名
+  saveConfig: 保存配置
+  promptSpace: 空間容量
+  promptSpaceDesc: 請輸入单位为 M 的容量值，設置为 0 时不限制空间
+  promptThumbWidth: 縮略圖最大寬度
+  promptThumbWidthDesc: 請輸入单位 px 的图片宽度
+  promptExt: 支持文件後綴
+  promptImageExtDesc: 填寫圖片後綴名稱，如 jpg，換行輸入，一行一個後綴（為空則採用系統默認）
+  promptFileSize: 支持文件大小
+  promptFileSizeDesc: 請輸入单位为 KB 的值
+  promptZip: 壓縮比率
+  promptZipDesc: 請輸入 1 到 100 的整数，100 为不壓縮，值越大越清晰
+  zipRangeError: 壓縮比率须在 1 到 100 之间
+  promptAvExtDesc: 填寫音頻視頻後綴名稱，如 mp3，換行輸入，一行一個後綴（為空則採用系統默認）
+  unsetSystemDefault: 未設置（采用系统默认）
+  cloudUpgrade: 系統升級
+  currentVersion: 當前版本
+  checkNow: 立即檢查
+  targetVersion: 目標版本
+  changelog: 更新說明
+  noChangelog: 暫無說明
+  counts: 清單計數
+  overlayFiles: 覆蓋文件
+  migrations: 數據庫迁移
+  scripts: 升級腳本
+  oneClickUpdate: 一鍵更新
+  alreadyLatest: 當前已是最新版本
+  upgrading: 升級進行中
+  currentStep: 當前步骤
+  upgradeSuccess: 升級成功
+  upgradeFailed: 升級失敗
+  upgradeSuccessMsg: 系統升級成功
+  startingUpgrade: 正在啟動升級任務…
+  afterUpgradeTip: 系統更新完成後，請清空瀏覽器緩存或使用 Ctrl+F5 強制刷新頁面，以確保加載最新前端資源。
+  agreeOfficial: 確保系統文件與官方一致，避免篡改
+  agreeBackup: 已備份並自願承擔更新風險
+  agreeLicense: 認同商業授權後商業化運營協議
+  siteBound: 站點已綁定
+  siteId: 站点 ID
+  commKey: 通信密鑰
+  siteUrl: 網站 URL
+  boundAccount: 綁定賬號
+  phone: 手機
+  email: 郵箱
+  boundAt: 綁定時間
+  reopenCloud: 重新打開雲平台
+  enterStore: 進入雲應用商城
+  cloudRegister: 雲平台註冊
+  cannotLoadCloudUrl: 無法加載雲平台地址
+  cloudStatus: 雲服務狀態
+  notRegistered: 未註冊
+  viewAll: 查看全部
+  resetSiteCreds: 重置站点 ID 和通信密鑰
+  goRegister: 前往註冊站點
+  networkDiag: 雲服務網絡診斷
+  refreshProbe: 刷新探測
+  serverTime: 伺服器时间
+  saasReachable: SaaS 連通
+  normal: 正常
+  abnormal: 異常
+  probeUrl: 探測地址
+  viewTokenWarn: 通信密鑰为敏感信息，请确认仅在必要时查看。是否继续？
+  viewTokenTitle: 查看全部
+  resetWarn: 如果您的系统没有发生云服务链接異常，请不要使用重置功能。
+  resetTitle: 重置站点 ID 和通信密鑰
+  confirmReset: 確認重置
+  resetOk: 重置成功，請重新註冊站點
+  notRegisteredWarn: 當前未註冊云站点
+  notRegisteredMsg: 當前未註冊
+  domainAddress: 域名地址
+  policeFiling: 公安備案
+  thumbEnable: 縮略設置
+  systemVersion: 系統版本
+  countsSummary: 覆蓋文件 {overlay} / 數據庫迁移 {migrations} / 升級腳本 {scripts}
+  spaceCapacityValue: "{n}M"
+welcomePage:
+  quickEntry: 快捷入口
+  tenantQuickEntry: 租戶快捷入口
+  recentLogins: 最近登錄次數
+  loginCount: 登錄次數：
+  myApps: 我的應用
+  refresh: 刷新
+  noAppsHint: 暫無可用應用。可在應用管理查看本地/雲應用，或由平台管理員在「租戶管理」中附加。
+  loadAppsFailed: 加載可用應用失敗
+  appExpired: 授權已過期，請聯繫平台續期
+  noAppEntry: 該應用暫無可打開的管理入口
+  openApp: 打開
+  appEnabled: 已啓用
+  installedAt: 安裝
+  guideTitle: 開始使用
+  guideSubtitle: 幾步把站點跑起來：管應用、配站點、做環境檢測。
+  guideAppsTitle: 應用管理
+  guideAppsDesc: 查看本地與雲應用，創建本地應用腳手架，或前往雲商城獲取。
+  guideAppsAction: 進入應用管理
+  guideSiteTitle: 站點設置
+  guideSiteDesc: 配置站點名稱、ICP、附件等基礎信息，讓前臺與後臺信息一致。
+  guideSiteAction: 去站點設置
+  guideCheckTitle: 系統檢測
+  guideCheckDesc: 一鍵檢查 PHP、數據庫、目錄權限等，排查常見運行問題。
+  guideCheckAction: 開始檢測

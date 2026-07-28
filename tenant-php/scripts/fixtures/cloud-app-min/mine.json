@@ -1,0 +1,12 @@
+﻿{
+  "name": "vendor/fixture-app",
+  "description": "Minimal fixture for cloud app-install hash tests",
+  "version": "1.0.0",
+  "author": [{"name": "fixture"}],
+  "package": {"dependencies": {}},
+  "composer": {
+    "require": {},
+    "psr-4": {"Plugin\\Vendor\\FixtureApp\\": "src"},
+    "config": "Plugin\\Vendor\\FixtureApp\\ConfigProvider"
+  }
+}

@@ -1,0 +1,224 @@
+baseUserManage:
+  avatar: Avatar
+  username: Username
+  nickname: Nickname
+  phone: Phone
+  dept: Department
+  post: Position
+  email: Email
+  password: Password
+  userType: User type
+  role: Role
+  signed: Signature
+  mainTitle: User Management
+  subTitle: Add, edit and delete users. Super admin cannot be modified.
+  dataScope: Data Scope
+  setRole: Set role
+  setDataScope: Set data scope
+  setRoleSuccess: Role assigned successfully
+  initPassword: Reset password
+  setPassword: Reset password to 123456?
+  setPasswordSuccess: Password reset successfully
+  allDept: All departments
+baseRoleManage:
+  mainTitle: Role Management
+  subTitle: Manage roles and permissions
+  name: Role name
+  code: Role code
+  permission: Permission Menu
+  setPermission: Set permission
+baseMenuManage:
+  addError: This operation has already been performed. Please click the left menu to try again.
+  deleteChildren: The current menu has child menus. Please delete the children first.
+  addTopMenu: Add Top Menu
+  parentMenu: Parent Menu
+  name: Menu Name
+  code: Menu Code
+  url: Menu Route
+  icon: Menu Icon
+  type: Menu Type
+  route: Route
+  view: View Address
+  link: Link/iFrame
+  activeName: Active Name
+  redirect: Route Redirect
+  i18n: Internationalization
+  sort: Sort Order
+  useDefaultLayout:
+    help: Custom layout available when not using the page
+    label: Use default layout
+    true: Yes
+    false: No
+  isEnabled: Enabled
+  isHidden: Hidden
+  isCache: Cached
+  isCopyright: Copyright
+  isBreadcrumb: Breadcrumb
+  isAffix: Tab Is Fixed
+  remark: Remarks
+  baseInfo: Basic Info
+  frontAuth: Frontend Auth
+  otherInfo: Other Info
+  typeItem:
+    M: Menu
+    B: Button
+    L: External Link
+    I: iFrame
+  BtnPermission:
+    label: Button Permission
+    name: Button Name
+    code: Button Code
+    i18n: Button Internationalization
+    noBtn: No Button Menu?
+    add: Add One
+  placeholder:
+    name: Please enter the menu name
+    code: Please enter the menu code, which must be unique globally
+    parentMenu: Please select the parent menu, or leave it blank for a top-level menu
+    activeName: Please enter the menu code used to highlight the menu when the page is accessed
+    route: Page access address, starting with "/"
+    view: View address under module/plugin views directory
+    link: Please enter the third-party URL
+    redirect: Vue-router redirect path, starting with "/"
+    i18n: Menu title internationalization
+    remark: Remarks
+    btnName: Please enter the button name
+    btnCode: Please enter the button code
+    btnI18n: Please enter the button i18n
+baseRole:
+  name: Role name
+  code: Role code
+  remark: Remark
+  permission: Permission Menu
+  placeholder:
+    name: Please enter role name
+    code: Please enter role code, must be globally unique
+    remark: Remark
+basePermission:
+  name: Permission name
+  code: Permission code
+  remark: Remark
+  placeholder:
+    name: Please enter permission name
+    code: Please enter permission code, must be globally unique
+    remark: Remark
+baseDict:
+  name: Dictionary name
+  code: Dictionary code
+  remark: Remark
+  placeholder:
+    name: Please enter dictionary name
+    code: Please enter dictionary code, must be globally unique
+    remark: Remark
+baseDictItem:
+  name: Dictionary item name
+  code: Dictionary item code
+  remark: Remark
+  placeholder:
+    name: Please enter dictionary item name
+    code: Please enter dictionary item code, must be globally unique
+baseLoginLog:
+  title: User Login Log
+  username: Username
+  ip: Login IP
+  browser: Browser
+  status: Login Status
+  message: Message
+  login_time: Login Time
+baseOperationLog:
+  title: User Operation Log
+  username: Username
+  method: Method
+  router: Route
+  service_name: Service Name
+  ip: Request IP
+  created_at: Created At
+  updated_at: Updated At
+baseDepartment:
+  name: Department Name
+  created_at: Created At
+  updated_at: Updated At
+  leaderCount: Leaders
+  positionsCount: Positions
+  usersCount: Members
+  parentDepartment: Parent Department
+  page:
+    mainTitle: Department Management
+    subTitle: Manage departments and department leaders.
+    setLeader: Set Leader
+    previewUser: View Users
+    managePost: Manage Positions
+  placeholder:
+    name: Please enter department name
+    parentDepartment: Please select parent department
+  error:
+    selfNotParent: Cannot set itself as parent department. Restored to default.
+basePost:
+  name: Position Name
+  belongPost: Belongs to Position
+  belongDept: Belongs to Department
+  created_at: Created At
+  updated_at: Updated At
+  dataScope: Data Scope
+  selectDept: Selected Departments
+  callFunc: Function Name
+  placeholder:
+    name: Please enter position name
+baseDeptLeader:
+  belongDept: Department
+  username: Username
+  nickname: Nickname
+  user_id: Select User
+  placeholder:
+    user_id: Please select a user as leader
+baseMenu:
+  permission:
+    index: Permission
+    user: Users
+    userList: User list
+    userSave: Create user
+    userUpdate: Update user
+    userDelete: Delete user
+    userPassword: Reset user password
+    getUserRole: Get user roles
+    setUserRole: Assign user roles
+    role: Roles
+    roleList: Role list
+    roleSave: Create role
+    roleUpdate: Update role
+    roleDelete: Delete role
+    getRolePermission: Get role permissions
+    setRolePermission: Assign role permissions
+    menu: Menus
+    menuList: Menu list
+    menuSave: Create menu
+    menuUpdate: Update menu
+    menuDelete: Delete menu
+    department: Departments
+    departmentList: Department list
+    departmentCreate: Create department
+    departmentSave: Update department
+    departmentDelete: Delete department
+    positionList: Position list
+    positionCreate: Create position
+    positionSave: Update position
+    positionDelete: Delete position
+    positionDataScope: Set position data scope
+    leaderList: Department leaders
+    leaderCreate: Add department leader
+    leaderSave: Update department leader
+    leaderDelete: Delete department leader
+  log:
+    index: Logs
+    userLoginLog: Login Log
+    operationLog: Operation Log
+    userLoginLogList: Login log list
+    userOperationLog: Operation log list
+    userLoginLogDelete: Delete login logs
+    userOperationLogDelete: Delete operation logs
+  dataCenter:
+    index: Data Center
+    attachment: Attachments
+    attachmentList: Attachment list
+    attachmentUpload: Upload attachment
+    attachmentDelete: Delete attachment

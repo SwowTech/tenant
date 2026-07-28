@@ -1,0 +1,822 @@
+loginForm:
+  loginButton: Login
+  passwordPlaceholder: please input password
+  codeLabel: Captcha
+  usernameLabel: Account
+  codePlaceholder: please input captcha
+  usernamePlaceholder: please input account
+  passwordLabel: Password
+tenantLogin:
+  title: Tenant Login
+  subtitle: Access the multi-tenant console
+  tabLogin: Login
+  tabRegister: Register
+  tenantDomain: Tenant ID
+  tenantDomainPlaceholder: Domain label from registration
+  tenantDomainLockedHint: Detected from current hostname
+  username: Account
+  usernamePlaceholder: Username
+  password: Password
+  passwordPlaceholder: Please enter password
+  submitLogin: Sign in
+  submitRegister: Register & provision
+  name: Name
+  namePlaceholder: Site / tenant name
+  domain: Domain label
+  domainPlaceholder: Subdomain
+  suggestDomain: Suggest
+  customDomain: Custom domain
+  customDomainPlaceholder: Optional
+  phone: Phone
+  email: Email
+  remark: Remark
+  remarkPlaceholder: Optional
+  adminUser: Admin account
+  adminPass: Admin password
+  adminPassPlaceholder: At least 8 chars, letters + numbers
+  registerSuccess: Registered. Please sign in with the admin account
+  tenantRequired: Please enter tenant ID
+  tenantResolveFailed: Unable to resolve tenant
+mineAdmin:
+  goHome: Back to Home
+  settings:
+    copyRights:
+      date: Date
+      website: URL
+      enable: Enable copyright
+      putOnRecord: Put on record
+      company: Corporation
+    primaryColorSetting: Primary color settings
+    toolBarSettings: Toolbar settings
+    tabBarSettings: Tab bar settings
+    save: Save settings
+    colorMode: Color mode
+    layoutSetting: Layout settings
+    title: Backend settings
+    layouts:
+      classic: Classic layout
+      columns: Column layout
+      mixed: Mixed layouts
+    watermarkText: Watermark text
+    colorModes:
+      system: System
+      light: Light
+      dark: Dark
+    mainAsideSetting: Main sidebar setting
+    enableWatermark: Enable watermarks
+    otherSettings: Other settings
+    mainAsides:
+      autoToFirstMenu: Auto to first menu
+      mainMenuTitle: Main menu title
+    subAsideSetting: Collapsed menu interaction
+    subAsides:
+      collapseSubMenuMode: Click when collapsed
+      collapseModePopup: Popup menu
+      collapseModeAside: Side list
+    copyRightSettings: Copyright settings
+    enableBreadcrumb: Enable breadcrumbs
+    asideDark: Side bar dark mode
+    tabbars:
+      mode: Tab bar style
+      modeCard: Card
+      enable: Enable the tab bar
+      modeDefault: Default
+  shortcuts:
+    switchN: Switch to N
+    switchLast: Toggle the last
+    searchOpen: Breathe out
+    searchBar: Search bar
+    tabs: Tabs
+    close: Close
+    exitMax: Exit max
+    toMax: Enter max
+  runtime:
+    devDependencies: Development dependencies
+    pluginList: Plugins list
+    pluginCount: Plugins count
+    systemVersion: System version
+    coreInfo: Core information
+    dependencies: Production dependencies
+    lastBuildTime: Last build time
+  sys:
+    notComponent: Page not found, unable to redirect
+    unknown: unknown
+  uc:
+    shortBackControl: Back
+    backControl: Back to control panel
+    setAllRead: Set all to read
+    title: User Center
+  notification:
+    todo: Todo
+    allRead: All read
+    gotoTheList: Go to the list
+    message: Message
+    notice: Notice
+  search:
+    placeholder: Search page, supporting queries for name, identifier, and URL
+    noNameMenu: Unnamed menu
+    notResult: Not search result
+  userBar:
+    showState: Show User bar
+    hideState: Hidden User bar
+    systemInfo: System information
+    logout: Logout
+    shortcuts: Introduction to shortcuts
+    clearCache: Clear cache
+    uc: User center
+  common:
+    saveSuccess: The save was successful
+    clearCache: The cache has been emptied
+  plugin:
+    disabled: Disabled
+    enabled: Enable
+  tab:
+    cannotUnfixed: This label cannot be unfixed
+    favorites: Tab page favorites
+    addFavorite: Add to favorites
+    fullscreen: Fullscreen tab
+    closeLeft: Close left tab
+    closeOther: Close other tab
+    closeRight: Close right tab
+    refresh: Refresh tab
+    fixed: Fixed tab
+    has: This tab has already been bookmarked
+    noFavorite: haven't collected any tab yet
+    close: Close tab
+  slogan: An open-source tenant site framework
+  toolbars:
+    notification: Notification
+    settings: Settings
+    search: Search
+    fullscreen: Full screen
+    sorts: Toolbar sorting
+    switchMode: Toggle the color mode
+    translate: International
+  mark: out of the box
+menu:
+  "uc:index": Home
+  "dashboard:analysis": Analysis Page
+  pageError: The page error
+  appstore: App store
+  "dashboard:workbench": Workbench
+  "dashboard:report": Statistics reports
+  "uc:logs": Logs
+  login: Login
+  "uc:message": Message
+  welcome: Welcome Page
+  systemCheck: System Check
+  dashboard: Dashboard
+  founder: Tenants
+  "founder:tenants": Tenant List
+  "founder:app-domains": App Domains
+  setting: Site Settings
+  "setting:cloud": Cloud Services
+  "setting:cloud:store": App Management
+  "setting:cloud:upgrade": System Upgrade
+  "setting:cloud:register": Register Site
+  "setting:cloud-diagnose": Cloud Diagnostics
+  "setting:group": Settings
+  "setting:site": Site Settings
+  "setting:site:page": Site Settings
+  "setting:attachment": Attachment Settings
+  "setting:attachment:page": Attachment Settings
+  "setting:systeminfo": System Info
+  "setting:systeminfo:page": System Info
+  "setting:user-login": Login & Register
+  "setting:user-login:page": Login & Register
+  "setting:tools": Tools
+  "setting:tools:database": Database
+  "setting:system-check": System Check
+  "setting:job": Background Jobs
+  "apps:mine": My Apps
+crud:
+  cancel: Cancel
+  save: Save
+  ok: OK
+  add: Add
+  edit: Edit
+  delete: Delete
+  search: Search
+  reset: Reset
+  submit: Submit
+  searchFold: Fold
+  searchUnFold: Unfold
+  selection: Selection
+  operation: Operation
+  createSuccess: The creation is successful
+  updateSuccess: The update was successful
+  delMessage: Whether to delete the selected data?
+  delDataMessage: Whether or not to delete the data?
+  delNoData: Select at least one row of data
+  delSuccess: The deletion is successful
+  status: Status
+  remark: Remark
+  sort: Sort
+  createTime: Creation time
+  updateTime: Updated time
+  exportMessage: Whether to confirm the export data?
+  importMessage: Whether to confirm the import data?
+  confirmTitle: System prompts
+  confirmMessage: OK to do %{msg}?
+  noPermission: There is no permission to access or use this feature
+  userNotAllow: This feature is not accessible or available to current users
+  superAdminNoEdit: SuperAdmin not allow edit
+form:
+  pleaseInput: Please input {msg}
+  pleaseSelect: Please select {msg}
+  requiredInput: '{msg} Required'
+  requiredSelect: '{msg} Required'
+dictionary:
+  system:
+    statusEnabled: Enabled
+    statusDisabled: Disabled
+    successState: Success
+    failState: Failure
+  base:
+    systemUser: System user
+    normalUser: Normal user
+  dataScope:
+    all: Full data permissions
+    deptSelf: Current department data permissions
+    deptTree: Current department and all sub-departments data permissions
+    self: Personal data permissions
+    customDept: Custom department selection data permissions
+    customFunc: Custom function data permissions
+dashboardPage:
+  loadFailed: Failed to load
+  analysisLoadFailed: Failed to load analysis page
+  reportLoadFailed: Failed to load report page
+  mom: MoM
+  rank: Rank
+  account: Account
+  opsCount: Operations
+  tenantLabel: Tenant
+  domain: Domain
+  status: Status
+  unknown: Unknown
+  tenantStatus: Tenant status
+  browserDist: Browser distribution
+  appEnableRank: App usage ranking
+  hotBiz: Hot services
+  statusActive: Active
+  statusDisabled: Disabled
+  statusProvisioning: Provisioning
+  statusFailed: Failed
+  platform:
+    page_title: Platform overview
+    report_title: Platform report
+    trend_title: New tenants (14 days)
+    ranking_title: Recently provisioned
+    pie_title: Tenant status
+  tenant:
+    page_title: Tenant overview
+    report_title: Tenant report
+    trend_title: Logins & operations (14 days)
+    ranking_title: Active accounts (7 days)
+    pie_title: Login success / failure
+  site:
+    page_title: Site overview
+    report_title: Site report
+    trend_title: Logins & operations (14 days)
+    ranking_title: Active accounts (7 days)
+    pie_title: Login success / failure
+  kpi:
+    users: Users
+    logins: Successful logins (7 days)
+    ops: Operations (7 days)
+    attachments: Attachments
+    tenants: Tenants
+    active: Active tenants
+    pending: Provisioning / failed
+    apps: Enabled app instances
+  series:
+    login_ok: Successful logins
+    ops: Operations
+    new_users: New users
+    new_tenants: New tenants
+  pie:
+    success: Success
+    fail: Failure
+    active: Active
+    disabled: Disabled
+    pending: Provisioning / failed
+    bound: Bound
+    unbound: Unbound
+  summary:
+    logins_30: Logins (30 days)
+    ops_30: Operations (30 days)
+    new_users_30: New users (30 days)
+    retention_7: Retained users (7 days)
+    tenants: Tenants
+    active: Active tenants
+    pending: Provisioning / failed
+    custom_domain: Custom domains
+  item:
+    week_login: Weekly login trend
+    week_ops: Weekly operations trend
+    retention_7: Retained users (7 days)
+    attach_7: New attachments (7 days)
+    provision_30: Provisioning trend (30 days)
+    app_rank: Tenant app usage ranking
+    domain_bind: Domain binding
+    status_dist: Status distribution
+  axis:
+    bound: Bound
+    unbound: Unbound
+    active: Active
+    disabled: Disabled
+    pending: Abnormal
+founderTenants:
+  forbidden: Only founders can access this page
+  name: Name
+  code: Code
+  status: Status
+  namePlaceholder: Tenant name
+  codePlaceholder: Tenant code
+  all: All
+  addTenant: Add tenant
+  editTenant: Edit tenant
+  accessDomain: Access URL
+  domain: Domain
+  prefix: Prefix
+  copy: Copy
+  copied: Copied
+  copyFailed: Copy failed
+  assignApp: Assign apps
+  enterTenant: Enter tenant admin
+  enable: Enable
+  disable: Disable
+  reprovision: Retry provision
+  domainLabel: Domain label
+  domainPlaceholder: Subdomain; used when custom domain is empty
+  customDomain: Custom domain
+  customDomainPlaceholder: Optional, leave empty if unused
+  contactPhone: Phone
+  contactEmail: Email
+  remark: Remark
+  adminUser: Admin username
+  adminPass: Admin password
+  suggestAnother: Suggest another
+  attached: Attached
+  add: Add
+  app: App
+  version: Version
+  expires: Expires
+  forever: Forever
+  expired: Expired
+  modify: Modify
+  selectApps: Select apps to assign
+  licensePeriod: License period
+  licensePeriodRecalc: License period (recalculated from now)
+  year: Years
+  month: Months
+  licenseHint: Years and months can be combined (e.g. 1 year 6 months). Both 0 means forever. Re-assign refreshes expiry.
+  assign: Assign
+  editAttached: Edit attached app
+  current: Current
+  until: Until {date}
+  expiredUntil: Expired (until {date})
+  tenantLine: "Tenant: {name} ({prefix})"
+  statusActive: Active
+  statusDisabled: Disabled
+  statusProvisioning: Provisioning
+  statusFailed: Provision failed
+  licenseForever: Forever
+  license1m: 1 month
+  license3m: 3 months
+  license6m: 6 months
+  license1y: 1 year
+  license2y: 2 years
+  license3y: 3 years
+  licenseCustom: Custom (years + months)
+  msgUpdated: Updated
+  msgUpdateOk: Updated successfully
+  msgCreateOk: Created and provisioned
+  msgEnabled: Enabled
+  msgDisabled: Disabled
+  msgReprovisionOk: Re-provision succeeded
+  msgAssignOk: Assigned successfully
+  msgNeedActiveAssign: Enable or provision the tenant before assigning apps
+  msgNeedActiveEnter: Enable or provision the tenant before entering
+  msgSelectApp: Please select apps to assign
+  msgEnterFailed: Failed to enter tenant
+  msgSuggestFailed: Failed to suggest a domain, please enter manually
+  msgDomainRequired: Please enter a domain label
+  msgDomainFormat: Only lowercase letters, numbers, and hyphens
+  msgDomainExists: Domain label already exists
+  msgDomainCheckFailed: Domain check failed, please retry later
+  msgNameRequired: Please enter a name
+  msgAdminUserRequired: Please enter admin username
+  msgAdminPassRequired: Please enter admin password
+appDomains:
+  tenantHint: Bind multiple custom domains to installed apps. Point DNS/hosts here to open the app by domain.
+  filterTenant: Filter tenant
+  filterApp: App id vendor/app
+  search: Search
+  bind: Bind domain
+  tenant: Tenant
+  app: App
+  domain: Domain
+  scheme: Scheme
+  primary: Primary
+  yes: Yes
+  setPrimary: Set primary
+  publicBase: Public base
+  actions: Actions
+  edit: Edit
+  unbind: Unbind
+  cancel: Cancel
+  save: Save
+  bindTitle: Bind app domain
+  editTitle: Edit app domain
+  domainPlaceholder: "e.g. sy.example.com (no port)"
+  dnsTitle: "How to set DNS / hosts"
+  dnsLocal: "Local/dev: add this line to your hosts file (admin rights), then open the URL with the gateway port."
+  dnsLocalHosts: "127.0.0.1  {domain}"
+  dnsLocalOpen: "Open: {url}"
+  dnsProd: "Production: point the domain to this server's public IP (or reverse-proxy to the gateway port via Nginx/Caddy)."
+  dnsProdA: "A record: host = subdomain (e.g. sy), value = server IP; use {'@'} for apex."
+  dnsProdCname: "Or CNAME to an already-resolved hostname if your DNS provider allows it."
+  dnsProdPort: "If you only expose 80/443, reverse-proxy {domain} to gateway port {port}; for direct access use {url}."
+  dnsEmpty: "Enter a domain to see setup instructions."
+  tenantRequired: Select a tenant
+  appRequired: Select an app
+  domainRequired: Enter a domain
+  created: Bound
+  updated: Updated
+  deleted: Unbound
+  setPrimaryOk: Primary domain updated
+  saveFailed: Save failed
+  deleteFailed: Unbind failed
+  deleteTitle: Unbind domain
+  deleteConfirm: "Unbind domain {domain}?"
+  noApps: No apps installed for this tenant
+appsEdition:
+  family: App family
+  edition: Edition
+  migrateData: Migrate data
+  migrateConfirm: Migrate data from {from} to {to}; the old app will stay enabled
+  standard: Standard
+appsMine:
+  settings: Settings
+  domainSection: Bind domain
+  passwordSection: Admin password
+  adminUser: Admin username
+  newPassword: New password
+  confirmPassword: Confirm password
+  savePassword: Save password
+  passwordRequired: Please enter a new password
+  passwordMin: Password must be at least 6 characters
+  passwordConfirmRequired: Please confirm the password
+  passwordMismatch: Passwords do not match
+  passwordChanged: App admin password updated
+  passwordFailed: Failed to change password
+  passwordUnsupported: This app does not support password change here; use the app admin panel
+  loadSettingsFailed: Failed to load app settings
+settingTools:
+  databaseTitle: Database
+  databaseAlert: Backups created by this system can only be restored by this system. Operate during off-peak hours; restore will overwrite current data.
+  tabBackup: Backup
+  tabRestore: Restore
+  tabOptimize: Optimize
+  backupDesc: Exports tables visible in the current context (tenant context only backs up that tenant's prefixed tables). Files are stored on the server under
+  visibleTables: "Visible tables: {count}"
+  startBackup: Start backup
+  backupConfirmTitle: Start backup
+  backupConfirmMsg: Please run this during low traffic. Backups can only be restored by this system. Do not manually edit the SQL. Start backup?
+  backupPreparing: Preparing backup…
+  backupFailed: Backup failed
+  backupDone: Backup completed
+  backupInterrupted: Backup interrupted
+  restoreDesc: After restore, refresh the page and verify business data.
+  backupName: Backup name
+  backupTime: Backup time
+  volumeCount: Volumes
+  size: Size
+  tablePrefix: Table prefix
+  restoreThis: Restore this backup
+  noBackups: No backups yet
+  restoreConfirmTitle: Restore backup
+  restoreConfirmMsg: Restore the database to the backup from {time}? Current data will be overwritten.
+  restoreConfirmBtn: Confirm restore
+  restoring: Restoring…
+  restoreFailed: Restore failed
+  restoreDone: Restore completed
+  deleteBackupTitle: Delete backup
+  deleteBackupMsg: Delete backup {name}?
+  deleted: Deleted
+  deleteFailed: Delete failed
+  optimizeAlert: Table optimization reduces fragmentation and improves I/O. Tables with free space (Data_free > 0) are selected by default.
+  startOptimize: Start optimize
+  selectAll: Select all
+  clearSelection: Clear
+  tableName: Table
+  engine: Engine
+  rows: Rows
+  dataSize: Data size
+  indexSize: Index size
+  freeSize: Free size
+  selectTables: Please select tables to optimize
+  optimizedCount: Optimized {count} table(s)
+  optimizeFailed: Optimize failed
+  systemCheckTitle: System Check
+  runCheck: Run check
+  copyResult: Copy result
+  checkSummary: Checked {total} item(s), {wrong} error(s)
+  checkName: Check item
+  checkResult: Result
+  checkOk: OK
+  checkFail: Error
+  suggestion: Suggestion
+  suggestedAction: Action
+  solution: Solution
+  view: View
+  noReport: No report available
+  copiedReport: Report copied
+  copyFailed: Copy failed, please select manually
+  checkNameKey:
+    ext: "{ext} extension"
+    php_version: "PHP version >= 8.1"
+    dir_writable: "{dir} directory writable"
+    mysql: MySQL connectivity
+    redis: Redis connectivity
+    saas_bind: Cloud site binding
+  checkSuggest:
+    install_ext: "Please install PHP extension {ext}"
+    upgrade_php: Please upgrade PHP to 8.1+
+    chmod_dir: "Please grant write permission: {path}"
+    check_db: Check DB_* configuration
+    check_redis: Check Redis configuration
+    saas_optional: Cloud site is optional. Register under Settings → Cloud → Register site for cloud upgrades or app subscriptions.
+  checkAction:
+    install_ext: Install extension
+    upgrade_php: Upgrade PHP
+    chmod_dir: Fix directory permissions
+    check_db: Check DB config
+    check_redis: Check Redis config
+    go_register: Register site
+cloudStore:
+  title: App Management
+  subtitle: Manage local and cloud apps. Split by plugin/app. Founders can scaffold local apps.
+  refresh: Refresh
+  createApp: Create app
+  createTitle: Create local app
+  createSubmit: Create
+  createOk: Local app created
+  createFailed: Create failed
+  checkFailed: Identifier check failed
+  needAvailableId: Pass identifier availability check first
+  identifierRequired: Identifier is required
+  identifierPattern: Must be vendor/app
+  identifierPlaceholder: e.g. swowtech/my-app
+  titleRequired: Title is required
+  titlePlaceholder: Display title
+  versionRequired: Version is required
+  edition: Edition
+  withDemo: Include demo
+  withDemoHint: Demo login page and sample API
+  openStore: Open cloud store
+  goRegister: Register site
+  loadFailed: Failed to load catalog
+  remoteFailed: Failed to query cloud market versions
+  openFailed: Unable to open the store
+  needBind: Please bind the cloud site first
+  openError: Failed to open the store
+  updateAvailable: "{count} item(s) in this tab can be updated"
+  type: Type
+  typeApp: App
+  typePlugin: Plugin
+  origin: Origin
+  originLocal: Local
+  originCloud: Cloud
+  identifier: Identifier
+  name: Name
+  localVersion: Local version
+  remoteVersion: Remote version
+  notListed: Not listed
+  update: Update
+  needUpdate: Update available
+  upToDate: Up to date
+  author: Author
+  status: Status
+  installed: Installed
+  disabled: Disabled
+settingUi:
+  notSet: Not set
+  saveSuccess: Saved
+  confirm: Confirm
+  tip: Notice
+  deleted: Deleted
+  clickToView: Click to view
+  calculating: Calculating...
+  attachUnavailable: Unable to calculate
+  systemInfo: System information
+  appVersion: App version
+  productFamily: Product family
+  serverOs: Server OS
+  phpVersion: PHP version
+  serverSoftware: Server software
+  mysqlVersion: Server MySQL version
+  uploadLimit: Upload limit
+  dbSize: Current database size
+  attachRoot: Attachment root
+  attachSize: Current attachment size
+  team: Development team
+  copyright: Copyright
+  relatedLinks: Related links
+  officialSite: Official website
+  basedOnMine: Based on MineAdmin (Apache-2.0)
+  tabBasic: Basic
+  tabIcp: ICP / License
+  basicSettings: Basic settings
+  closeSite: Close site
+  closeSiteDesc: When enabled, non-admin access is blocked; admins can still sign in to reopen
+  closeReason: Close reason
+  autoLogout: Auto logout
+  autoLogoutUnset: Not set (never auto logout)
+  autoLogoutMinutes: "{n} min logout"
+  autoLogout30: Logout after 30 minutes
+  autoLogout1h: Logout after 1 hour
+  autoLogout3h: Logout after 3 hours
+  autoLogoutDialog: Set auto logout
+  autoLogoutHint: While signed in, idle sessions will be logged out automatically.
+  autoLogoutNever: Never auto logout
+  autoLogoutCustom: Custom
+  minutes: minutes
+  editCloseReason: Edit close reason
+  closeReasonPrompt: Enter the message shown when the site is closed
+  searchDomain: Search domain
+  add: Add
+  domain: Domain
+  icpNo: ICP filing No.
+  policeNo: Public security filing
+  eLicense: E-license
+  actions: Actions
+  noIcp: No ICP records yet
+  noIcpHint: Maintain filing info by domain for footer display.
+  addNow: Add now
+  deleteIcpConfirm: Delete this filing record?
+  domainRequired: Please enter a domain
+  domainPlaceholder: Enter domain
+  icpPlaceholder: Enter ICP number
+  policePlaceholder: "e.g. Jing Gong Wang An Bei 1100000200001"
+  licensePlaceholder: License URL
+  editIcp: Edit filing / license
+  addIcp: Add filing / license
+  sectionMemberLogin: Tenant member login/register (does not affect admin)
+  memberLoginAlert: These rules apply to the public register page /login. Use /admin for the management console.
+  userRegister: User registration
+  userRegisterDesc: When enabled, the tenant frontend can call the register API
+  auditNewUser: Review new users
+  auditNewUserDesc: New users must be enabled by an admin before login
+  userAgreement: User agreement
+  registerCaptcha: Register captcha
+  loginCaptcha: Login captcha
+  passwordStrength: Password strength
+  defaultRole: Default role
+  roleId: "Role ID: {id}"
+  roleUnspecified: Unspecified
+  maxLoginDuration: Max login duration
+  minutesValue: "{n} minutes"
+  unlimited: Unlimited
+  pwdWeak: "Weak (length >= 6 only)"
+  pwdMedium: "Medium (>=8, letters + digits)"
+  pwdStrong: "Strong (>=8, letters + digits + symbols)"
+  editAgreement: Edit user agreement
+  agreementPrompt: Enter agreement content or URL
+  editPasswordStrength: Edit password strength
+  passwordPrompt: "Enter strength: weak / medium / strong"
+  passwordInvalid: Enter weak, medium, or strong
+  editDefaultRole: Edit default role
+  defaultRolePrompt: Default role ID (0 = none)
+  nonnegativeInt: Enter a non-negative integer
+  editLoginDuration: Edit login duration
+  loginDurationPrompt: Max login duration in minutes (0 = unlimited)
+  localStrategy: Local policy
+  uploadForceAlert: The following limits are enforced on upload (local and OSS)
+  phpEnvTitle: PHP environment
+  phpUploadMax: "1. Max upload file size allowed by PHP: {size}"
+  phpPostMax: "2. Max POST size allowed by PHP: {size}"
+  localSpace: Local attachment space
+  spaceCapacity: Space capacity
+  spaceCapacityHint: "Capacity unit is MB; 0 means unlimited"
+  thumbSettings: Thumbnail settings
+  thumbConfigSaved: Settings saved (thumbnail generation can be extended later)
+  thumbMaxWidth: Max thumbnail width
+  thumbMaxWidthHint: Max width after thumbnail
+  imageSettings: Image attachments
+  fileExt: Allowed extensions
+  fileSize: Max file size
+  imageZip: Image compression
+  imageZipHint: "100 = no compression; higher is clearer"
+  avSettings: Audio / video attachments
+  remoteAttachment: Remote attachment
+  storageLocal: Local storage
+  storageAliyun: Alibaba Cloud OSS
+  localStorageHint: Files are stored locally under tenant/{'{'}tenantId{'}'}/app/{'{'}app{'}'}. All apps share this layout.
+  ossPlatformTip: Platform-wide OSS (configured by founder). When enabled, admin and tenant apps all use this bucket; object keys remain isolated by tenant/app.
+  intranetUpload: Intranet upload
+  yes: Yes
+  no: No
+  customUrl: Custom URL
+  endpointPlaceholder: e.g. oss-cn-hangzhou.aliyuncs.com
+  customUrlPlaceholder: Optional CDN or custom domain
+  saveConfig: Save configuration
+  promptSpace: Space capacity
+  promptSpaceDesc: Enter capacity in MB; 0 means unlimited
+  promptThumbWidth: Max thumbnail width
+  promptThumbWidthDesc: Enter width in px
+  promptExt: Allowed extensions
+  promptImageExtDesc: Enter image extensions such as jpg, one per line (empty = system default)
+  promptFileSize: Max file size
+  promptFileSizeDesc: Enter size in KB
+  promptZip: Compression ratio
+  promptZipDesc: Enter an integer from 1 to 100; 100 means no compression
+  zipRangeError: Compression ratio must be between 1 and 100
+  promptAvExtDesc: Enter audio/video extensions such as mp3, one per line (empty = system default)
+  unsetSystemDefault: Not set (system default)
+  cloudUpgrade: System upgrade
+  currentVersion: Current version
+  checkNow: Check now
+  targetVersion: Target version
+  changelog: Release notes
+  noChangelog: No notes
+  counts: Package counts
+  overlayFiles: Overlay files
+  migrations: Migrations
+  scripts: Scripts
+  oneClickUpdate: One-click update
+  alreadyLatest: Already up to date
+  upgrading: Upgrade in progress
+  currentStep: Current step
+  upgradeSuccess: Upgrade succeeded
+  upgradeFailed: Upgrade failed
+  upgradeSuccessMsg: System upgraded successfully
+  startingUpgrade: Starting upgrade task…
+  afterUpgradeTip: After upgrading, clear the browser cache or press Ctrl+F5 to load the latest frontend assets.
+  agreeOfficial: Ensure system files match the official package and are not tampered with
+  agreeBackup: Backup completed; I accept the upgrade risk
+  agreeLicense: I agree to the commercial license for commercial use
+  siteBound: Site bound
+  siteId: Site ID
+  commKey: Communication key
+  siteUrl: Site URL
+  boundAccount: Bound account
+  phone: Phone
+  email: Email
+  boundAt: Bound at
+  reopenCloud: Reopen cloud console
+  enterStore: Open Cloud App Store
+  cloudRegister: Cloud registration
+  cannotLoadCloudUrl: Unable to load cloud URL
+  cloudStatus: Cloud service status
+  notRegistered: Not registered
+  viewAll: View all
+  resetSiteCreds: Reset site ID and communication key
+  goRegister: Register site
+  networkDiag: Cloud network diagnostics
+  refreshProbe: Refresh probe
+  serverTime: Server time
+  saasReachable: SaaS connectivity
+  normal: Normal
+  abnormal: Abnormal
+  probeUrl: Probe URL
+  viewTokenWarn: The communication key is sensitive. Continue only when necessary.
+  viewTokenTitle: View full key
+  resetWarn: Do not reset unless cloud linking is broken.
+  resetTitle: Reset site ID and communication key
+  confirmReset: Confirm reset
+  resetOk: Reset succeeded; please register the site again
+  notRegisteredWarn: Cloud site is not registered
+  notRegisteredMsg: Not registered yet
+  domainAddress: Domain
+  policeFiling: Public security filing
+  thumbEnable: Thumbnails
+  systemVersion: System version
+  countsSummary: "Overlay {overlay} / migrations {migrations} / scripts {scripts}"
+  spaceCapacityValue: "{n} MB"
+welcomePage:
+  quickEntry: Quick access
+  tenantQuickEntry: Tenant shortcuts
+  recentLogins: Recent logins
+  loginCount: "Logins: "
+  myApps: My apps
+  refresh: Refresh
+  noAppsHint: No apps yet. Open App Management for local/cloud apps, or ask an admin to attach apps in Tenant Management.
+  loadAppsFailed: Failed to load apps
+  appExpired: License expired. Please contact the platform to renew.
+  noAppEntry: This app has no admin entry to open
+  openApp: Open
+  appEnabled: Enabled
+  installedAt: Installed
+  guideTitle: Get started
+  guideSubtitle: A few steps to get going — manage apps, configure the site, and run checks.
+  guideAppsTitle: App management
+  guideAppsDesc: Browse local and cloud apps, scaffold a local app, or open the cloud store.
+  guideAppsAction: Open app management
+  guideSiteTitle: Site settings
+  guideSiteDesc: Set site name, ICP, attachments, and other basics for your tenant.
+  guideSiteAction: Open site settings
+  guideCheckTitle: System check
+  guideCheckDesc: Check PHP, database, and directory permissions to catch common issues.
+  guideCheckAction: Run check
