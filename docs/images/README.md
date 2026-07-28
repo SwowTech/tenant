@@ -1,16 +1,18 @@
 # docs/images
 
-Place README screenshots and diagrams here.
+README screenshots and brand assets.
 
-Suggested names:
-
-- `logo.png` / `logo-horizontal.png` — brand
-- `screenshot-login.png` — login
-- `screenshot-welcome.png` — welcome
-- `screenshot-app-mgmt.png` — app management
-
-Reference in Markdown:
+| File | Description |
+|---|---|
+| `logo.png` / `logo-horizontal.png` | Brand |
+| `screenshot-welcome.png` | Welcome |
+| `screenshot-dashboard.png` | Dashboard |
+| `screenshot-analysis.png` | Analysis |
+| `screenshot-report.png` | Reports |
+| `screenshot-app-mgmt.png` | App management |
+| `screenshot-app-domains.png` | App domains |
+| `screenshot-tenants.png` | Tenant list |
 
 ```markdown
-![Login](./docs/images/screenshot-login.png)
+![Welcome](./docs/images/screenshot-welcome.png)
 ```

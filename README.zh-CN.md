@@ -58,31 +58,33 @@ npm run dev
 
 本地租户示例：`http://{租户标识}.localhost:2888/login`。
 
-## 截图说明（如何加图片）
+## 界面截图
 
-1. 把图片放进仓库目录 **`docs/images/`**（已提交的 logo 也在这里）。
-2. 在 Markdown 里用相对路径引用：
+### 欢迎页
 
-```markdown
-![登录页](./docs/images/screenshot-login.png)
+![欢迎页](./docs/images/screenshot-welcome.png)
 
-<!-- 也可控制宽度（GitHub 支持 HTML） -->
-<p align="center">
-  <img src="./docs/images/screenshot-welcome.png" alt="欢迎页" width="720" />
-</p>
-```
+### 工作台
 
-3. 建议文件名：
+![工作台](./docs/images/screenshot-dashboard.png)
 
-| 文件 | 内容 |
-|---|---|
-| `docs/images/screenshot-login.png` | 登录页 |
-| `docs/images/screenshot-welcome.png` | 欢迎页 / 我的应用 |
-| `docs/images/screenshot-app-mgmt.png` | 应用管理 |
+### 分析页 / 统计报表
 
-4. 提交并推送后，GitHub 会直接渲染这些图片。
+![分析页](./docs/images/screenshot-analysis.png)
 
-> 暂无截图时，可先只保留上方 logo；有界面后再补 `screenshot-*.png` 并在本段取消注释或补上 `![...](...)`。
+![统计报表](./docs/images/screenshot-report.png)
+
+### 应用管理 / 应用域名
+
+![应用管理](./docs/images/screenshot-app-mgmt.png)
+
+![应用域名](./docs/images/screenshot-app-domains.png)
+
+### 租户列表（创始人）
+
+![租户列表](./docs/images/screenshot-tenants.png)
+
+> 继续补充截图：把 PNG 放进 `docs/images/`，在本文件用 `![说明](./docs/images/文件名.png)` 引用后推送即可。
 
 ## 仓库与文档
 

@@ -58,17 +58,29 @@ Open the URL printed by Vite (commonly `http://localhost:2888`).
 
 ## Screenshots
 
-Put PNG/JPG/WebP files under [`docs/images/`](./docs/images/), then reference them in Markdown:
+### Welcome
 
-```markdown
-![Login](./docs/images/screenshot-login.png)
-```
+![Welcome](./docs/images/screenshot-welcome.png)
 
-| Suggested file | Content |
-|---|---|
-| `docs/images/screenshot-login.png` | Login page |
-| `docs/images/screenshot-welcome.png` | Welcome / My apps |
-| `docs/images/screenshot-app-mgmt.png` | App management |
+### Dashboard
+
+![Dashboard](./docs/images/screenshot-dashboard.png)
+
+### Analysis / Reports
+
+![Analysis](./docs/images/screenshot-analysis.png)
+
+![Reports](./docs/images/screenshot-report.png)
+
+### App management / App domains
+
+![App management](./docs/images/screenshot-app-mgmt.png)
+
+![App domains](./docs/images/screenshot-app-domains.png)
+
+### Tenants (founder)
+
+![Tenants](./docs/images/screenshot-tenants.png)
 
 ## Repository
 
