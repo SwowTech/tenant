@@ -64,25 +64,32 @@ function detectDomainFromHostname(): string {
   if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
     return ''
   }
+
+  const configured = rootHost.value.trim().toLowerCase()
+  // 控制台 apex / www：swow.tech → 可手填租户标识，勿把品牌名当成租户
+  if (configured) {
+    if (hostname === configured || hostname === `www.${configured}`) {
+      return ''
+    }
+    if (hostname.endsWith(`.${configured}`)) {
+      const label = hostname.slice(0, -(configured.length + 1)).split('.')[0] || ''
+      if (['www', 'api', 'admin', 'www-api'].includes(label)) {
+        return ''
+      }
+      return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(label) ? label : ''
+    }
+    // 已配置 root_host 但当前 Host 不是其子域 → 不猜测
+    return ''
+  }
+
+  // 未拿到 root_host：仅识别 *.localhost
   const parts = hostname.split('.')
-  if (parts.length < 2) {
-    return ''
-  }
-  const sub = parts[0]
-  if (['www', '127', 'localhost'].includes(sub)) {
-    return ''
-  }
-  // acme.localhost → acme
   if (parts.length === 2 && parts[1] === 'localhost') {
+    const sub = parts[0]
     return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(sub) ? sub : ''
   }
-  const configured = rootHost.value.trim().toLowerCase()
-  if (configured && hostname.endsWith(`.${configured}`)) {
-    const label = hostname.slice(0, -(configured.length + 1)).split('.')[0]
-    return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(label) ? label : ''
-  }
-  // 通用：取最左标签（排除常见非租户前缀）
-  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(sub) ? sub : ''
+
+  return ''
 }
 
 async function validateDomainUnique(_rule: unknown, value: string, callback: (error?: Error) => void) {

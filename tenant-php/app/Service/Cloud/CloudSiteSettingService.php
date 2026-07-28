@@ -115,7 +115,7 @@ class CloudSiteSettingService
     }
 
     /**
-     * 向 saas 换取商城 store_token，供打开 /platform/store 时注入.
+     * 向 saas 换取商城 store_token，供打开 /platform/app-store 时注入.
      *
      * @return array{bound: bool, store_token?: string, store_url?: string, message?: string}
      */
@@ -165,7 +165,7 @@ class CloudSiteSettingService
         return [
             'bound' => true,
             'store_token' => $token,
-            'store_url' => $admin . '/platform/store?store_token=' . rawurlencode($token),
+            'store_url' => $admin . '/platform/app-store?store_token=' . rawurlencode($token),
         ];
     }
 }

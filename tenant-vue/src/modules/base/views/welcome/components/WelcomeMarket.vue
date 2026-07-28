@@ -54,7 +54,7 @@ const adminBase = computed(() => {
 
 /** saas-vue base 为 /platform/，商城在买家路由 /store */
 function fallbackStoreUrl() {
-  return `${adminBase.value}/platform/store`
+  return `${adminBase.value}/platform/app-store`
 }
 
 watch(
@@ -167,7 +167,7 @@ async function openApp(app: MarketAppItem) {
     const res: any = await getCloudStoreToken()
     if (res.code === ResultCode.SUCCESS && res.data?.store_token) {
       window.open(
-        `${adminBase.value}/platform/store/${id}?store_token=${encodeURIComponent(res.data.store_token)}`,
+        `${adminBase.value}/platform/app-store/${id}?store_token=${encodeURIComponent(res.data.store_token)}`,
         '_blank',
       )
       return

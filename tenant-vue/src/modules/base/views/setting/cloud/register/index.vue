@@ -87,9 +87,6 @@ onMounted(loadSiteInfo)
         <el-button class="mt-4 ml-2" type="success" @click="$router.push('/setting/cloud/store')">
           {{ t('settingUi.enterStore') }}
         </el-button>
-        <el-button class="mt-4 ml-2" type="success" @click="$router.push('/setting/cloud/store')">
-          {{ t('settingUi.enterStore') }}
-        </el-button>
       </template>
       <iframe
         v-else-if="iframeSrc"

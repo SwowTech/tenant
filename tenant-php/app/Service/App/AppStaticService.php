@@ -24,7 +24,13 @@ final class AppStaticService
         if (is_dir($file)) {
             $file = rtrim($file, '/\\') . '/index.html';
         }
+        $ext = strtolower(pathinfo($relPath, PATHINFO_EXTENSION));
+        $isAsset = $ext !== '' && ! in_array($ext, ['html', 'htm', 'php', 'phtml'], true);
         if (! is_file($file)) {
+            // 资源文件缺失时不要回退成 index.html（会伪装成 200）
+            if ($isAsset) {
+                return $this->plain(404, 'not found: ' . $relPath);
+            }
             $file = $webRoot . '/index.html';
         }
         if (! is_file($file)) {

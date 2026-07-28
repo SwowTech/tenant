@@ -83,6 +83,18 @@ final class AppGatewayDispatch
             }
 
             if (AppManifest::proxyAll($manifest)) {
+                // SPA/静态资源（如 /admin/*.css）优先由宿主直出，避免 PHP built-in + TP6 误判成路由 404
+                if ($this->isPublicStaticPath($path)) {
+                    $webRoot = AppManifest::webDir($manifest, $identifier);
+                    $candidate = $webRoot . '/' . $path;
+                    if (is_file($candidate)) {
+                        return $this->staticService->response($identifier, $path);
+                    }
+
+                    // 不再回落到 TP6（否则返回 application/json 的 Not Found，难排查）
+                    return $this->plain(404, 'static not found: ' . $candidate);
+                }
+
                 return $this->proxyService->forward(
                     $request,
                     $identifier,
@@ -134,6 +146,18 @@ final class AppGatewayDispatch
         } finally {
             $this->dynamicTablePrefix->reset();
         }
+    }
+
+    /** 带扩展名的路径按静态资源处理（admin SPA 的 js/css/map/图片等） */
+    private function isPublicStaticPath(string $path): bool
+    {
+        $path = ltrim($path, '/');
+        if ($path === '' || str_contains($path, '..')) {
+            return false;
+        }
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        return $ext !== '' && ! in_array($ext, ['php', 'phtml'], true);
     }
 
     private function plain(int $status, string $text): ResponseInterface

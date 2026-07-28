@@ -20,6 +20,15 @@ if (! getenv('APP_SITE_PATH')) {
     $_ENV['APP_SITE_PATH'] = '/swowtech/xunlian-trace-tp6';
 }
 
+// 网关若误把 /vendor/app 前缀带进内置服务，先剥掉再找静态文件
+$sitePath = rtrim((string) (getenv('APP_SITE_PATH') ?: ''), '/');
+if ($sitePath !== '' && ($uri === $sitePath || str_starts_with($uri, $sitePath . '/'))) {
+    $uri = substr($uri, strlen($sitePath)) ?: '/';
+    if ($uri === '' || $uri[0] !== '/') {
+        $uri = '/' . ltrim($uri, '/');
+    }
+}
+
 // 修正 HTTP_HOST：用网关转发的 X-Forwarded-Host
 if (! empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
     $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
@@ -28,9 +37,29 @@ if (! empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
 $publicRoot = __DIR__;
 $file = $publicRoot . str_replace('/', DIRECTORY_SEPARATOR, $uri);
 
-// 真实静态文件交给内置服务器
+// 真实静态文件：自行输出（比 return false 交给内置 server 更稳）
 if ($uri !== '/' && is_file($file)) {
-    return false;
+    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    $mime = match ($ext) {
+        'html', 'htm' => 'text/html; charset=utf-8',
+        'js', 'mjs' => 'application/javascript; charset=utf-8',
+        'css' => 'text/css; charset=utf-8',
+        'json', 'map' => 'application/json; charset=utf-8',
+        'svg' => 'image/svg+xml',
+        'png' => 'image/png',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'woff' => 'font/woff',
+        'woff2' => 'font/woff2',
+        'ttf' => 'font/ttf',
+        'ico' => 'image/x-icon',
+        default => 'application/octet-stream',
+    };
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . (string) filesize($file));
+    readfile($file);
+
+    return true;
 }
 
 // SPA / 静态目录 —— 仅对 GET/HEAD/OPTIONS 走 SPA fallback，POST/PUT/DELETE/PATCH 交给 TP6 PHP 路由

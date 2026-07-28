@@ -42,7 +42,7 @@ const adminBase = computed(() =>
   (import.meta.env.VITE_SAAS_ADMIN_URL || 'http://127.0.0.1:5174').replace(/\/$/, ''),
 )
 
-const fallbackStoreUrl = computed(() => `${adminBase.value}/platform/store`)
+const fallbackStoreUrl = computed(() => `${adminBase.value}/platform/app-store`)
 
 const filteredList = computed(() => list.value.filter(i => i.type === activeTab.value))
 
