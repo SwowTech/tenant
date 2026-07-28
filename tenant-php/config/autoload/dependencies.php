@@ -11,13 +11,14 @@ declare(strict_types=1);
  */
 use App\Service\PassportService;
 use Hyperf\Crontab\Strategy\StrategyInterface;
+use Hyperf\Crontab\Strategy\WorkerStrategy;
 use Mine\JwtAuth\Interfaces\CheckTokenInterface;
 use Mine\Upload\Factory;
 use Mine\Upload\UploadInterface;
-use Plugin\MineAdmin\Crontab\Strategy\WorkerStrategy;
 
 return [
     UploadInterface::class => Factory::class,
     CheckTokenInterface::class => PassportService::class,
-    StrategyInterface::class => WorkerStrategy::class
+    // Hyperf built-in (plugin Strategy needs plugin autoload; bare server deploy often fails without it)
+    StrategyInterface::class => WorkerStrategy::class,
 ];
