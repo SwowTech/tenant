@@ -77,8 +77,8 @@ class SettingMenu20260716 extends Seeder
         $toolSort += 10;
         $this->createPage($tools->id, 'setting:system-check', '/system/check', 'base/views/system/check/index', '系统常规检测', 'ri:health-book-line', $toolSort);
 
-        // 4. 后台任务
-        $this->createGroup($root->id, 'setting:job', '后台任务', 'ri:task-line', 40);
+        // 「后台任务」不在初始 seed 创建：无定时任务子菜单时点击会 404。
+        // 由 hyperf-crontab 插件安装脚本在挂菜单时创建 setting:job 分组。
     }
 
     /**

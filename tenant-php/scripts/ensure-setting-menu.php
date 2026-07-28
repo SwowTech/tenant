@@ -273,8 +273,7 @@ try {
     $toolSort += 10;
     $insertMenu($insert, $toolsId, 'setting:system-check', '/system/check', 'base/views/system/check/index', '', $metaM('系统常规检测', 'ri:health-book-line', true, 1, 'setting:system-check'), $toolSort, $now);
 
-    // 4. 后台任务（供定时任务插件挂接）
-    $insertMenu($insert, $rootId, 'setting:job', '', '', '', $metaM('后台任务', 'ri:task-line', false, 1, 'setting:job'), 40, $now);
+    // 「后台任务」由 crontab 插件安装时创建，避免空分组点击 404
 
     // 若无历史角色，挂到 SuperAdmin（若存在）
     if (! $roleIds) {

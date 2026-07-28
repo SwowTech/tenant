@@ -42,8 +42,28 @@ class InstallScript
 
         $app->run(new ArrayInput(['crontab:migrate']), new NullOutput());
 
-        // 菜单：挂到「站点设置 → 后台任务」下（无该分组时退化为顶级）
+        // 菜单：挂到「站点设置 → 后台任务」下；无分组则先创建
+        $settingId = (int) (Menu::query()->where('name', 'setting')->value('id') ?? 0);
         $jobParentId = (int) (Menu::query()->where('name', 'setting:job')->value('id') ?? 0);
+        if ($jobParentId <= 0 && $settingId > 0) {
+            $job = Menu::create(array_merge(self::BASE_MENU_DATA, [
+                'name' => 'setting:job',
+                'parent_id' => $settingId,
+                'sort' => 40,
+                'meta' => [
+                    'title' => '后台任务',
+                    'i18n' => 'menu.setting:job',
+                    'icon' => 'ri:task-line',
+                    'type' => 'M',
+                    'hidden' => 0,
+                    'breadcrumbEnable' => 1,
+                    'copyright' => 1,
+                    'cache' => 1,
+                    'affix' => 0,
+                ],
+            ]));
+            $jobParentId = (int) $job->id;
+        }
 
         $menu = [
             [
