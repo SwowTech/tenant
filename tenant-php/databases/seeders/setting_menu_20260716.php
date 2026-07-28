@@ -6,8 +6,8 @@ use App\Model\Permission\Menu;
 use Hyperf\Database\Seeders\Seeder;
 
 /**
- * 站点设置菜单（对齐微擎 frames.inc.php site 段）：
- * 云服务 → 设置 → 常用工具 → 后台任务
+ * 站点设置菜单（对齐本地 menu-local.sql / 微擎 site 段）：
+ * 云服务 → 设置 → 常用工具 → 后台任务；顶级「应用管理」。
  */
 class SettingMenu20260716 extends Seeder
 {
@@ -22,6 +22,8 @@ class SettingMenu20260716 extends Seeder
     public function run(): void
     {
         if (Menu::query()->where('name', 'setting')->exists()) {
+            $this->ensureCloudPages();
+
             return;
         }
 
@@ -40,25 +42,14 @@ class SettingMenu20260716 extends Seeder
             'updated_by' => 0,
             'remark' => '',
             'sort' => 90,
-            'meta' => [
-                'title' => '站点设置',
-                'icon' => 'ri:settings-3-line',
-                'type' => 'M',
-                'hidden' => 0,
-                'componentPath' => 'modules/',
-                'componentSuffix' => '.vue',
-                'breadcrumbEnable' => 1,
-                'copyright' => 1,
-                'cache' => 1,
-                'affix' => 0,
-            ],
+            'meta' => $this->metaM('站点设置', 'ri:settings-3-line', 'setting', true, 1),
         ]);
 
-        // 1. 云服务（最上面）
+        // 1. 云服务
         $cloud = $this->createGroup($root->id, 'setting:cloud', '云服务', 'ri:cloud-line', 10);
-        $this->createPage($cloud->id, 'setting:cloud:upgrade', '/setting/cloud/upgrade', 'base/views/setting/cloud/upgrade/index', '系统升级', 'ri:refresh-line', 10);
-        $this->createPage($cloud->id, 'setting:cloud:register', '/setting/cloud/register', 'base/views/setting/cloud/register/index', '注册站点', 'ri:registered-line', 20);
-        $this->createPage($cloud->id, 'setting:cloud-diagnose', '/setting/cloud-diagnose', 'base/views/setting/cloud/diagnose/index', '云服务诊断', 'ri:cloud-line', 30);
+        $this->createPage($cloud->id, 'setting:cloud:upgrade', '/setting/cloud/upgrade', 'base/views/setting/cloud/upgrade/index', '系统升级', 'ri:refresh-line', 10, 0);
+        $this->createPage($cloud->id, 'setting:cloud:register', '/setting/cloud/register', 'base/views/setting/cloud/register/index', '注册站点', 'ri:registered-line', 20, 0);
+        $this->createPage($cloud->id, 'setting:cloud-diagnose', '/setting/cloud-diagnose', 'base/views/setting/cloud/diagnose/index', '云服务诊断', 'ri:cloud-line', 30, 0);
 
         // 2. 设置
         $setting = $this->createGroup($root->id, 'setting:group', '设置', 'ri:settings-4-line', 20);
@@ -78,18 +69,72 @@ class SettingMenu20260716 extends Seeder
         $userLogin = $this->createPage($setting->id, 'setting:user-login', '/setting/user-login', 'base/views/setting/user-login/index', '用户登录/注册设置', 'ri:user-settings-line', $sort);
         $this->createButton($userLogin->id, 'setting:user-login', self::API_BUTTONS['setting:user-login']);
 
-        // 3. 常用工具（含系统常规检测）
+        // 3. 常用工具
         $tools = $this->createGroup($root->id, 'setting:tools', '常用工具', 'ri:tools-line', 30);
         $toolSort = 10;
         $this->createPage($tools->id, 'setting:tools:database', '/setting/tools/database', 'base/views/setting/tools/database/index', '数据库', 'ri:database-2-line', $toolSort);
         $toolSort += 10;
         $this->createPage($tools->id, 'setting:system-check', '/system/check', 'base/views/system/check/index', '系统常规检测', 'ri:health-book-line', $toolSort);
 
-        // 4. 后台任务（分组挂接定时任务插件，无空占位页）
+        // 4. 后台任务
         $this->createGroup($root->id, 'setting:job', '后台任务', 'ri:task-line', 40);
 
-        // 5. 应用管理：顶级主菜单末尾（原云应用商城）
-        $this->createPage(0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '应用管理', 'ri:apps-2-line', 999);
+        // 5. 应用管理（顶级，对齐本地 menu-local）
+        $this->createPage(0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '应用管理', 'ri:store-2-line', 999, 0);
+    }
+
+    /**
+     * 已安装库：把仍指向 placeholder 的云服务页改到真实组件，并补齐缺失的应用管理.
+     */
+    private function ensureCloudPages(): void
+    {
+        $map = [
+            'setting:cloud:upgrade' => ['path' => '/setting/cloud/upgrade', 'component' => 'base/views/setting/cloud/upgrade/index', 'title' => '系统升级', 'icon' => 'ri:refresh-line', 'sort' => 10],
+            'setting:cloud:register' => ['path' => '/setting/cloud/register', 'component' => 'base/views/setting/cloud/register/index', 'title' => '注册站点', 'icon' => 'ri:registered-line', 'sort' => 20],
+            'setting:cloud-diagnose' => ['path' => '/setting/cloud-diagnose', 'component' => 'base/views/setting/cloud/diagnose/index', 'title' => '云服务诊断', 'icon' => 'ri:cloud-line', 'sort' => 30],
+            'setting:cloud:store' => ['path' => '/setting/cloud/store', 'component' => 'base/views/setting/cloud/store/index', 'title' => '应用管理', 'icon' => 'ri:store-2-line', 'sort' => 999],
+        ];
+
+        $cloudId = (int) Menu::query()->where('name', 'setting:cloud')->value('id');
+
+        foreach ($map as $name => $cfg) {
+            $row = Menu::query()->where('name', $name)->first();
+            if ($row) {
+                if ((string) $row->component !== $cfg['component']) {
+                    $row->component = $cfg['component'];
+                    $row->path = $cfg['path'];
+                    $row->save();
+                }
+                continue;
+            }
+            $parentId = $name === 'setting:cloud:store' ? 0 : $cloudId;
+            if ($parentId < 0 || ($name !== 'setting:cloud:store' && $cloudId <= 0)) {
+                continue;
+            }
+            $this->createPage($parentId, $name, $cfg['path'], $cfg['component'], $cfg['title'], $cfg['icon'], $cfg['sort'], 0);
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function metaM(string $title, string $icon, string $name, bool $withComponent = true, int $cache = 1): array
+    {
+        $meta = [
+            'title' => $title,
+            'i18n' => 'menu.' . $name,
+            'icon' => $icon,
+            'type' => 'M',
+            'hidden' => 0,
+            'breadcrumbEnable' => 1,
+            'copyright' => 1,
+            'cache' => $cache,
+            'affix' => 0,
+        ];
+        if ($withComponent) {
+            $meta['componentPath'] = 'modules/';
+            $meta['componentSuffix'] = '.vue';
+        }
+
+        return $meta;
     }
 
     private function createGroup(int $parentId, string $name, string $title, string $icon, int $sort): Menu
@@ -104,16 +149,7 @@ class SettingMenu20260716 extends Seeder
             'updated_by' => 0,
             'remark' => '',
             'sort' => $sort,
-            'meta' => [
-                'title' => $title,
-                'icon' => $icon,
-                'type' => 'M',
-                'hidden' => 0,
-                'breadcrumbEnable' => 1,
-                'copyright' => 1,
-                'cache' => 1,
-                'affix' => 0,
-            ],
+            'meta' => $this->metaM($title, $icon, $name, false, 1),
         ]);
     }
 
@@ -125,6 +161,7 @@ class SettingMenu20260716 extends Seeder
         string $title,
         string $icon,
         int $sort,
+        int $cache = 1,
     ): Menu {
         $pageName = array_key_exists($code, self::API_BUTTONS) ? $code . ':page' : $code;
 
@@ -138,18 +175,7 @@ class SettingMenu20260716 extends Seeder
             'updated_by' => 0,
             'remark' => '',
             'sort' => $sort,
-            'meta' => [
-                'title' => $title,
-                'icon' => $icon,
-                'type' => 'M',
-                'hidden' => 0,
-                'componentPath' => 'modules/',
-                'componentSuffix' => '.vue',
-                'breadcrumbEnable' => 1,
-                'copyright' => 1,
-                'cache' => 1,
-                'affix' => 0,
-            ],
+            'meta' => $this->metaM($title, $icon, $pageName, true, $cache),
         ]);
     }
 

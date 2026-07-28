@@ -42,29 +42,99 @@ $pdo = new PDO(
 );
 
 $cloudPages = [
-    'setting:cloud:upgrade' => 'base/views/setting/cloud/upgrade/index',
-    'setting:cloud:register' => 'base/views/setting/cloud/register/index',
-    'setting:cloud-diagnose' => 'base/views/setting/cloud/diagnose/index',
-    'setting:cloud:store' => 'base/views/setting/cloud/store/index',
+    'setting:cloud:upgrade' => [
+        'component' => 'base/views/setting/cloud/upgrade/index',
+        'path' => '/setting/cloud/upgrade',
+        'title' => '系统升级',
+        'icon' => 'ri:refresh-line',
+        'parent' => 'setting:cloud',
+        'sort' => 10,
+    ],
+    'setting:cloud:register' => [
+        'component' => 'base/views/setting/cloud/register/index',
+        'path' => '/setting/cloud/register',
+        'title' => '注册站点',
+        'icon' => 'ri:registered-line',
+        'parent' => 'setting:cloud',
+        'sort' => 20,
+    ],
+    'setting:cloud-diagnose' => [
+        'component' => 'base/views/setting/cloud/diagnose/index',
+        'path' => '/setting/cloud-diagnose',
+        'title' => '云服务诊断',
+        'icon' => 'ri:cloud-line',
+        'parent' => 'setting:cloud',
+        'sort' => 30,
+    ],
+    'setting:cloud:store' => [
+        'component' => 'base/views/setting/cloud/store/index',
+        'path' => '/setting/cloud/store',
+        'title' => '应用管理',
+        'icon' => 'ri:store-2-line',
+        'parent' => null,
+        'sort' => 999,
+    ],
 ];
 
 $patchCloudComponents = static function (PDO $pdo, array $cloudPages): int {
-    $stmt = $pdo->prepare('UPDATE menu SET component = ?, updated_at = ? WHERE name = ?');
+    $update = $pdo->prepare('UPDATE menu SET component = ?, path = ?, updated_at = ? WHERE name = ?');
+    $insert = $pdo->prepare(
+        'INSERT INTO menu (parent_id, name, path, component, redirect, created_by, updated_by, remark, meta, sort, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)'
+    );
     $patched = 0;
     $now = date('Y-m-d H:i:s');
-    foreach ($cloudPages as $name => $component) {
-        $cur = $pdo->prepare('SELECT component FROM menu WHERE name = ? LIMIT 1');
+    foreach ($cloudPages as $name => $cfg) {
+        $component = $cfg['component'];
+        $cur = $pdo->prepare('SELECT id, component FROM menu WHERE name = ? LIMIT 1');
         $cur->execute([$name]);
-        $old = $cur->fetchColumn();
-        if ($old === false) {
+        $row = $cur->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            if ((string) $row['component'] === $component) {
+                continue;
+            }
+            $update->execute([$component, $cfg['path'], $now, $name]);
+            ++$patched;
+            echo "patched {$name}: {$row['component']} -> {$component}\n";
             continue;
         }
-        if ((string) $old === $component) {
-            continue;
+        $parentId = 0;
+        if ($cfg['parent'] !== null) {
+            $parentId = (int) $pdo->query(
+                'SELECT id FROM menu WHERE name=' . $pdo->quote($cfg['parent']) . ' LIMIT 1'
+            )->fetchColumn();
+            if ($parentId <= 0) {
+                echo "skip insert {$name}: parent {$cfg['parent']} missing\n";
+                continue;
+            }
         }
-        $stmt->execute([$component, $now, $name]);
+        $meta = json_encode([
+            'title' => $cfg['title'],
+            'i18n' => 'menu.' . $name,
+            'icon' => $cfg['icon'],
+            'type' => 'M',
+            'hidden' => 0,
+            'componentPath' => 'modules/',
+            'componentSuffix' => '.vue',
+            'breadcrumbEnable' => 1,
+            'copyright' => 1,
+            'cache' => 0,
+            'affix' => 0,
+        ], JSON_UNESCAPED_UNICODE);
+        $insert->execute([
+            $parentId,
+            $name,
+            $cfg['path'],
+            $component,
+            '',
+            '',
+            $meta,
+            $cfg['sort'],
+            $now,
+            $now,
+        ]);
         ++$patched;
-        echo "patched {$name}: {$old} -> {$component}\n";
+        echo "inserted {$name} -> {$component}\n";
     }
 
     return $patched;
@@ -213,6 +283,9 @@ try {
 
     // 4. 后台任务（供定时任务插件挂接）
     $insertMenu($insert, $rootId, 'setting:job', '', '', '', $metaM('后台任务', 'ri:task-line', false, 1, 'setting:job'), 40, $now);
+
+    // 5. 应用管理（顶级，对齐本地）
+    $insertMenu($insert, 0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '', $metaM('应用管理', 'ri:store-2-line', true, 0, 'setting:cloud:store'), 999, $now);
 
     // 若无历史角色，挂到 SuperAdmin（若存在）
     if (! $roleIds) {
