@@ -6,8 +6,9 @@ use App\Model\Permission\Menu;
 use Hyperf\Database\Seeders\Seeder;
 
 /**
- * 站点设置菜单（对齐本地 menu-local.sql / 微擎 site 段）：
- * 云服务 → 设置 → 常用工具 → 后台任务；顶级「应用管理」。
+ * 站点设置菜单（初始安装）：
+ * 云服务（升级/注册/诊断）→ 设置 → 常用工具 → 后台任务。
+ * 不含「应用管理 / 附加应用 / 租户列表」等运营数据入口。
  */
 class SettingMenu20260716 extends Seeder
 {
@@ -78,13 +79,10 @@ class SettingMenu20260716 extends Seeder
 
         // 4. 后台任务
         $this->createGroup($root->id, 'setting:job', '后台任务', 'ri:task-line', 40);
-
-        // 5. 应用管理（顶级，对齐本地 menu-local）
-        $this->createPage(0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '应用管理', 'ri:store-2-line', 999, 0);
     }
 
     /**
-     * 已安装库：把仍指向 placeholder 的云服务页改到真实组件，并补齐缺失的应用管理.
+     * 已安装库：把仍指向 placeholder 的云服务页改到真实组件（不补插应用管理）.
      */
     private function ensureCloudPages(): void
     {
@@ -92,7 +90,6 @@ class SettingMenu20260716 extends Seeder
             'setting:cloud:upgrade' => ['path' => '/setting/cloud/upgrade', 'component' => 'base/views/setting/cloud/upgrade/index', 'title' => '系统升级', 'icon' => 'ri:refresh-line', 'sort' => 10],
             'setting:cloud:register' => ['path' => '/setting/cloud/register', 'component' => 'base/views/setting/cloud/register/index', 'title' => '注册站点', 'icon' => 'ri:registered-line', 'sort' => 20],
             'setting:cloud-diagnose' => ['path' => '/setting/cloud-diagnose', 'component' => 'base/views/setting/cloud/diagnose/index', 'title' => '云服务诊断', 'icon' => 'ri:cloud-line', 'sort' => 30],
-            'setting:cloud:store' => ['path' => '/setting/cloud/store', 'component' => 'base/views/setting/cloud/store/index', 'title' => '应用管理', 'icon' => 'ri:store-2-line', 'sort' => 999],
         ];
 
         $cloudId = (int) Menu::query()->where('name', 'setting:cloud')->value('id');
@@ -107,11 +104,10 @@ class SettingMenu20260716 extends Seeder
                 }
                 continue;
             }
-            $parentId = $name === 'setting:cloud:store' ? 0 : $cloudId;
-            if ($parentId < 0 || ($name !== 'setting:cloud:store' && $cloudId <= 0)) {
+            if ($cloudId <= 0) {
                 continue;
             }
-            $this->createPage($parentId, $name, $cfg['path'], $cfg['component'], $cfg['title'], $cfg['icon'], $cfg['sort'], 0);
+            $this->createPage($cloudId, $name, $cfg['path'], $cfg['component'], $cfg['title'], $cfg['icon'], $cfg['sort'], 0);
         }
     }
 

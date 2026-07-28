@@ -66,14 +66,6 @@ $cloudPages = [
         'parent' => 'setting:cloud',
         'sort' => 30,
     ],
-    'setting:cloud:store' => [
-        'component' => 'base/views/setting/cloud/store/index',
-        'path' => '/setting/cloud/store',
-        'title' => '应用管理',
-        'icon' => 'ri:store-2-line',
-        'parent' => null,
-        'sort' => 999,
-    ],
 ];
 
 $patchCloudComponents = static function (PDO $pdo, array $cloudPages): int {
@@ -283,9 +275,6 @@ try {
 
     // 4. 后台任务（供定时任务插件挂接）
     $insertMenu($insert, $rootId, 'setting:job', '', '', '', $metaM('后台任务', 'ri:task-line', false, 1, 'setting:job'), 40, $now);
-
-    // 5. 应用管理（顶级，对齐本地）
-    $insertMenu($insert, 0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '', $metaM('应用管理', 'ri:store-2-line', true, 0, 'setting:cloud:store'), 999, $now);
 
     // 若无历史角色，挂到 SuperAdmin（若存在）
     if (! $roleIds) {

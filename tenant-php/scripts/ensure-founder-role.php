@@ -160,8 +160,6 @@ foreach ([
     'founder:tenants:create' => '创建租户',
     'founder:tenants:update' => '更新租户',
     'founder:tenants:provision' => '重试开通',
-    'founder:tenants:assign-app' => '分配应用',
-    'founder:apps:list' => '可分配应用列表',
 ] as $name => $title) {
     $menuIds[] = $insertMenu($pdo, $listId, $name, '', '', '', $metaB($title), $now);
 }
