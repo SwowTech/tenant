@@ -21,6 +21,9 @@ use Throwable;
 
 /**
  * 创始人将本地/已下载应用分配到业务租户（写 cy_{id}_tenant_installed_app）.
+ *
+ * 不在构造注入 AppStore 插件 Service：生产环境常关 APP_DEBUG / 未装插件，硬依赖会导致
+ * FounderTenantService（含 suggest-domain）整类 DI 失败。
  */
 final class FounderAppAssignService
 {
@@ -32,7 +35,6 @@ final class FounderAppAssignService
 
     public function __construct(
         private readonly DynamicTablePrefix $dynamicTablePrefix,
-        private readonly AppStoreService $appStore,
         private readonly AppInstallService $appInstallService,
     ) {}
 
@@ -72,7 +74,7 @@ final class FounderAppAssignService
      */
     public function listAssignableApps(): array
     {
-        $list = $this->appStore->getLocalAppInstallList();
+        $list = $this->listLocalPlugins();
         $root = AppPath::root();
         foreach (glob($root . '/*/*/app.json') ?: [] as $file) {
             if (! is_string($file)) {
@@ -198,7 +200,7 @@ final class FounderAppAssignService
             $this->ensureInstalledAppSchema();
             $pluginPath = Plugin::PLUGIN_PATH . '/' . $identifier;
             if (! is_dir($pluginPath)) {
-                $this->appStore->download([
+                $this->requireAppStore()->download([
                     'identifier' => $identifier,
                     'version' => $version,
                 ]);
@@ -220,7 +222,7 @@ final class FounderAppAssignService
                 return;
             }
 
-            $this->appStore->install([
+            $this->requireAppStore()->install([
                 'identifier' => $identifier,
                 'version' => $version,
             ]);
@@ -310,6 +312,57 @@ final class FounderAppAssignService
         }
 
         return $identifier;
+    }
+
+    /**
+     * 本地 plugin/ 目录列表（不依赖 AppStore 插件 Service）.
+     *
+     * @return array<string, array{status: mixed, version: mixed, description: mixed, author: mixed}>
+     */
+    private function listLocalPlugins(): array
+    {
+        $items = [];
+        try {
+            foreach (Plugin::getPluginJsonPaths() as $splFileInfo) {
+                $info = Plugin::read($splFileInfo->getRelativePath());
+                if ($info === []) {
+                    continue;
+                }
+                $name = (string) ($info['name'] ?? '');
+                if ($name === '') {
+                    continue;
+                }
+                $items[$name] = [
+                    'status' => $info['status'] ?? false,
+                    'version' => $info['version'] ?? '1.0.0',
+                    'description' => $info['description'] ?? $name,
+                    'author' => $info['author'] ?? '',
+                ];
+            }
+        } catch (Throwable) {
+            return $items;
+        }
+
+        return $items;
+    }
+
+    private function requireAppStore(): AppStoreService
+    {
+        if (! class_exists(AppStoreService::class)) {
+            throw new BusinessException(
+                ResultCode::FAIL,
+                '应用商店插件未安装或未启用，无法从商店下载/安装插件。请先安装 mine-admin/app-store，或仅分配 apps/ 本地应用',
+            );
+        }
+
+        try {
+            return make(AppStoreService::class);
+        } catch (Throwable $e) {
+            throw new BusinessException(
+                ResultCode::FAIL,
+                '应用商店服务不可用：' . $e->getMessage(),
+            );
+        }
     }
 
     /** @return string table prefix */

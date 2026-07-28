@@ -56,7 +56,7 @@ router.beforeEach(async (to, from, next) => {
       await userStore.requestUserInfo()
       // logout inside requestUserInfo may have cleared the session
       if (!userStore.isLogin) {
-        next({ name: 'admin', replace: true })
+        next({ name: 'login', replace: true })
         return
       }
       next({ path: to.fullPath, query: to.query })
@@ -71,9 +71,9 @@ router.beforeEach(async (to, from, next) => {
       next()
       return
     }
-    const toUc = to.path === '/uc' || to.path.startsWith('/uc/')
+    // 未登录默认跳转租户登录页 /login（管理登录仍可访问 /admin）
     next({
-      name: toUc ? 'login' : 'admin',
+      name: 'login',
       query: { redirect: to.fullPath },
       replace: true,
     })

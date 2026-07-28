@@ -5,6 +5,7 @@ declare(strict_types=1);
 /**
  * 重建站点设置菜单（对齐微擎：云服务 / 设置 / 常用工具 / 后台任务）。
  * 幂等：先删 setting* 再插入；并尽量把新菜单挂回原角色。
+ * 若结构已存在，仅把仍指向 placeholder 的云服务菜单改到真实页面。
  *
  * Usage: php scripts/ensure-setting-menu.php
  *        php scripts/ensure-setting-menu.php --force
@@ -40,12 +41,44 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
+$cloudPages = [
+    'setting:cloud:upgrade' => 'base/views/setting/cloud/upgrade/index',
+    'setting:cloud:register' => 'base/views/setting/cloud/register/index',
+    'setting:cloud-diagnose' => 'base/views/setting/cloud/diagnose/index',
+    'setting:cloud:store' => 'base/views/setting/cloud/store/index',
+];
+
+$patchCloudComponents = static function (PDO $pdo, array $cloudPages): int {
+    $stmt = $pdo->prepare('UPDATE menu SET component = ?, updated_at = ? WHERE name = ?');
+    $patched = 0;
+    $now = date('Y-m-d H:i:s');
+    foreach ($cloudPages as $name => $component) {
+        $cur = $pdo->prepare('SELECT component FROM menu WHERE name = ? LIMIT 1');
+        $cur->execute([$name]);
+        $old = $cur->fetchColumn();
+        if ($old === false) {
+            continue;
+        }
+        if ((string) $old === $component) {
+            continue;
+        }
+        $stmt->execute([$component, $now, $name]);
+        ++$patched;
+        echo "patched {$name}: {$old} -> {$component}\n";
+    }
+
+    return $patched;
+};
+
 $exists = (bool) $pdo->query("SELECT id FROM menu WHERE name='setting' LIMIT 1")->fetchColumn();
 if ($exists && ! $force) {
     // 检测是否已是新结构（有 setting:cloud 分组）
     $hasCloud = (bool) $pdo->query("SELECT id FROM menu WHERE name='setting:cloud' LIMIT 1")->fetchColumn();
     if ($hasCloud) {
-        echo "setting menu already restructured (use --force to rebuild)\n";
+        $n = $patchCloudComponents($pdo, $cloudPages);
+        echo $n > 0
+            ? "patched {$n} cloud menu component(s)\n"
+            : "setting menu already restructured (use --force to rebuild)\n";
         exit(0);
     }
     echo "old setting menu detected, restructuring...\n";
@@ -142,9 +175,9 @@ try {
 
     // 1. 云服务
     $cloudId = $insertMenu($insert, $rootId, 'setting:cloud', '', '', '', $metaM('云服务', 'ri:cloud-line', false), 10, $now);
-    $insertMenu($insert, $cloudId, 'setting:cloud:upgrade', '/setting/cloud/upgrade', 'base/views/setting/placeholder/index', '', $metaM('系统升级', 'ri:refresh-line', true, 0), 10, $now);
-    $insertMenu($insert, $cloudId, 'setting:cloud:register', '/setting/cloud/register', 'base/views/setting/placeholder/index', '', $metaM('注册站点', 'ri:registered-line', true, 0), 20, $now);
-    $insertMenu($insert, $cloudId, 'setting:cloud-diagnose', '/setting/cloud-diagnose', 'base/views/setting/placeholder/index', '', $metaM('云服务诊断', 'ri:cloud-line', true, 0), 30, $now);
+    $insertMenu($insert, $cloudId, 'setting:cloud:upgrade', '/setting/cloud/upgrade', 'base/views/setting/cloud/upgrade/index', '', $metaM('系统升级', 'ri:refresh-line', true, 0), 10, $now);
+    $insertMenu($insert, $cloudId, 'setting:cloud:register', '/setting/cloud/register', 'base/views/setting/cloud/register/index', '', $metaM('注册站点', 'ri:registered-line', true, 0), 20, $now);
+    $insertMenu($insert, $cloudId, 'setting:cloud-diagnose', '/setting/cloud-diagnose', 'base/views/setting/cloud/diagnose/index', '', $metaM('云服务诊断', 'ri:cloud-line', true, 0), 30, $now);
 
     // 2. 设置
     $groupId = $insertMenu($insert, $rootId, 'setting:group', '', '', '', $metaM('设置', 'ri:settings-4-line', false), 20, $now);

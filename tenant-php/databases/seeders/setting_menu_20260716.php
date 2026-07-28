@@ -56,9 +56,9 @@ class SettingMenu20260716 extends Seeder
 
         // 1. 云服务（最上面）
         $cloud = $this->createGroup($root->id, 'setting:cloud', '云服务', 'ri:cloud-line', 10);
-        $this->createPlaceholder($cloud->id, 'setting:cloud:upgrade', '/setting/cloud/upgrade', '系统升级', 10, 'ri:refresh-line');
-        $this->createPlaceholder($cloud->id, 'setting:cloud:register', '/setting/cloud/register', '注册站点', 20, 'ri:registered-line');
-        $this->createPlaceholder($cloud->id, 'setting:cloud-diagnose', '/setting/cloud-diagnose', '云服务诊断', 30, 'ri:cloud-line');
+        $this->createPage($cloud->id, 'setting:cloud:upgrade', '/setting/cloud/upgrade', 'base/views/setting/cloud/upgrade/index', '系统升级', 'ri:refresh-line', 10);
+        $this->createPage($cloud->id, 'setting:cloud:register', '/setting/cloud/register', 'base/views/setting/cloud/register/index', '注册站点', 'ri:registered-line', 20);
+        $this->createPage($cloud->id, 'setting:cloud-diagnose', '/setting/cloud-diagnose', 'base/views/setting/cloud/diagnose/index', '云服务诊断', 'ri:cloud-line', 30);
 
         // 2. 设置
         $setting = $this->createGroup($root->id, 'setting:group', '设置', 'ri:settings-4-line', 20);
@@ -89,7 +89,7 @@ class SettingMenu20260716 extends Seeder
         $this->createGroup($root->id, 'setting:job', '后台任务', 'ri:task-line', 40);
 
         // 5. 应用管理：顶级主菜单末尾（原云应用商城）
-        $this->createPlaceholder(0, 'setting:cloud:store', '/setting/cloud/store', '应用管理', 999, 'ri:apps-2-line', 'base/views/setting/cloud/store/index');
+        $this->createPage(0, 'setting:cloud:store', '/setting/cloud/store', 'base/views/setting/cloud/store/index', '应用管理', 'ri:apps-2-line', 999);
     }
 
     private function createGroup(int $parentId, string $name, string $title, string $icon, int $sort): Menu
@@ -148,39 +148,6 @@ class SettingMenu20260716 extends Seeder
                 'breadcrumbEnable' => 1,
                 'copyright' => 1,
                 'cache' => 1,
-                'affix' => 0,
-            ],
-        ]);
-    }
-
-    private function createPlaceholder(
-        int $parentId,
-        string $name,
-        string $path,
-        string $title,
-        int $sort,
-        string $icon = 'ri:file-forbid-line',
-    ): Menu {
-        return Menu::create([
-            'name' => $name,
-            'path' => $path,
-            'parent_id' => $parentId,
-            'component' => 'base/views/setting/placeholder/index',
-            'redirect' => '',
-            'created_by' => 0,
-            'updated_by' => 0,
-            'remark' => '',
-            'sort' => $sort,
-            'meta' => [
-                'title' => $title,
-                'icon' => $icon,
-                'type' => 'M',
-                'hidden' => 0,
-                'componentPath' => 'modules/',
-                'componentSuffix' => '.vue',
-                'breadcrumbEnable' => 1,
-                'copyright' => 1,
-                'cache' => 0,
                 'affix' => 0,
             ],
         ]);

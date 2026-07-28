@@ -156,6 +156,46 @@ export function saveUserLoginSetting(data: Partial<UserLoginSettingVo>) {
   return http.put('/admin/setting/user-login', data)
 }
 
+export function getIpWhitelist() {
+  return http.get('/admin/setting/ip-whitelist')
+}
+
+export function saveIpWhitelist(data: Partial<IpWhitelistVo>) {
+  return http.put('/admin/setting/ip-whitelist', data)
+}
+
+export function getSensitiveWordList() {
+  return http.get('/admin/setting/sensitive-word')
+}
+
+export function addSensitiveWord(word: string) {
+  return http.post('/admin/setting/sensitive-word', { word })
+}
+
+export function deleteSensitiveWord(word: string) {
+  return http.delete('/admin/setting/sensitive-word', { params: { word } })
+}
+
+export interface OauthWechatAccountVo {
+  id: number
+  name: string
+  app_id: string
+}
+
+export interface OauthSettingVo {
+  account_id: number
+  host: string
+  wechat_accounts?: OauthWechatAccountVo[]
+}
+
+export function getOauthSetting() {
+  return http.get('/admin/setting/oauth')
+}
+
+export function saveOauthSetting(data: Partial<OauthSettingVo>) {
+  return http.put('/admin/setting/oauth', data)
+}
+
 /* ---- 数据库工具（对齐微擎） ---- */
 
 export interface DbTableVo {

@@ -15,6 +15,7 @@ const rootRoutes: RouteRecordRaw[] = [
     name: 'MineRootLayoutRoute',
     path: '/',
     component: () => import('@/layouts'),
+    redirect: '/login',
   },
   {
     name: 'uc',
