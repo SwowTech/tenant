@@ -8,11 +8,9 @@ use App\Exception\BusinessException;
 use App\Http\Common\ResultCode;
 use App\Library\App\AppManifest;
 use App\Library\App\AppPath;
-use Hyperf\DbConnection\Db;
+use App\Library\Cloud\SaasPublicClient;
 use RuntimeException;
 use Throwable;
-
-use function Hyperf\Support\env;
 
 /**
  * 创始人：创建本地应用（apps/{vendor}/{app} 脚手架）.
@@ -120,43 +118,10 @@ final class LocalAppCreateService
 
     private function saasIdentifierExists(string $identifier): bool
     {
-        // 1) 直连 SaaS 库（与云商城目录同源）
         try {
-            $exists = Db::connection('platform')
-                ->table('market_app')
-                ->where('identifier', $identifier)
-                ->exists();
-            if ($exists) {
-                return true;
-            }
-        } catch (Throwable) {
-            // fall through to HTTP
-        }
-
-        // 2) HTTP 调 SaaS store 查重接口
-        $base = rtrim((string) env('SAAS_PHP_PUBLIC_URL', ''), '/');
-        if ($base === '') {
-            return false;
-        }
-        try {
-            $url = $base . '/store/apps/identifier-available?identifier=' . rawurlencode($identifier);
-            $ctx = stream_context_create([
-                'http' => [
-                    'method' => 'GET',
-                    'timeout' => 5,
-                    'ignore_errors' => true,
-                    'header' => "Accept: application/json\r\n",
-                ],
-            ]);
-            $raw = @file_get_contents($url, false, $ctx);
-            if (! is_string($raw) || $raw === '') {
-                return false;
-            }
-            $json = json_decode($raw, true);
-            if (! is_array($json)) {
-                return false;
-            }
-            $data = $json['data'] ?? $json;
+            $data = SaasPublicClient::get('/store/apps/identifier-available', [
+                'identifier' => $identifier,
+            ], 5);
             if (isset($data['available'])) {
                 return ! (bool) $data['available'];
             }

@@ -7,12 +7,12 @@ namespace App\Service\Cloud;
 use App\Library\App\AppEdition;
 use App\Library\App\AppManifest;
 use App\Library\App\AppPath;
-use Hyperf\DbConnection\Db;
+use App\Library\Cloud\SaasPublicClient;
 use Mine\AppStore\Plugin;
 use Throwable;
 
 /**
- * 应用管理页：本地插件/应用清单 + 云市场来源与版本对比.
+ * 应用管理页：本地插件/应用清单 + 云市场来源与版本对比（经 SaaS HTTP API）.
  */
 final class CloudInstalledCatalogService
 {
@@ -30,18 +30,14 @@ final class CloudInstalledCatalogService
         $remoteOk = true;
         $remoteMessage = '';
         $remoteMap = [];
+        $marketIds = [];
         try {
-            $remoteMap = $this->fetchRemoteLatestVersions(array_column($items, 'identifier'));
+            $payload = $this->fetchRemoteCatalog(array_column($items, 'identifier'));
+            $remoteMap = $payload['versions'];
+            $marketIds = $payload['exists'];
         } catch (Throwable $e) {
             $remoteOk = false;
             $remoteMessage = '无法读取云市场版本：' . $e->getMessage();
-        }
-
-        $marketIds = [];
-        try {
-            $marketIds = $this->fetchMarketIdentifiers(array_column($items, 'identifier'));
-        } catch (Throwable) {
-            // ignore; origin 回退为 local
         }
 
         $out = [];
@@ -67,24 +63,34 @@ final class CloudInstalledCatalogService
 
     /**
      * @param list<string> $identifiers
-     * @return array<string, true>
+     * @return array{versions: array<string, string>, exists: array<string, true>}
      */
-    private function fetchMarketIdentifiers(array $identifiers): array
+    private function fetchRemoteCatalog(array $identifiers): array
     {
         $identifiers = array_values(array_unique(array_filter(array_map('strval', $identifiers))));
         if ($identifiers === []) {
-            return [];
-        }
-        $rows = Db::connection('platform')
-            ->table('market_app')
-            ->whereIn('identifier', $identifiers)
-            ->pluck('identifier');
-        $map = [];
-        foreach ($rows as $id) {
-            $map[(string) $id] = true;
+            return ['versions' => [], 'exists' => []];
         }
 
-        return $map;
+        $data = SaasPublicClient::get('/store/apps/versions', [
+            'identifiers' => implode(',', $identifiers),
+        ]);
+
+        $versions = [];
+        foreach (($data['versions'] ?? []) as $k => $v) {
+            $versions[(string) $k] = (string) $v;
+        }
+        $exists = [];
+        foreach (($data['exists'] ?? []) as $k => $v) {
+            if ($v) {
+                $exists[(string) $k] = true;
+            }
+        }
+        foreach ($versions as $k => $_) {
+            $exists[$k] = true;
+        }
+
+        return ['versions' => $versions, 'exists' => $exists];
     }
 
     /**
@@ -171,58 +177,6 @@ final class CloudInstalledCatalogService
         return $out;
     }
 
-    /**
-     * @param list<string> $identifiers
-     * @return array<string, string> identifier => latest_version
-     */
-    private function fetchRemoteLatestVersions(array $identifiers): array
-    {
-        $identifiers = array_values(array_unique(array_filter(array_map('strval', $identifiers))));
-        if ($identifiers === []) {
-            return [];
-        }
-
-        $apps = Db::connection('platform')
-            ->table('market_app')
-            ->whereIn('identifier', $identifiers)
-            ->get(['id', 'identifier', 'status']);
-
-        if ($apps->isEmpty()) {
-            return [];
-        }
-
-        $idToIdent = [];
-        foreach ($apps as $app) {
-            $idToIdent[(int) $app->id] = (string) $app->identifier;
-        }
-        $appIds = array_keys($idToIdent);
-
-        $versions = Db::connection('platform')
-            ->table('market_app_version')
-            ->whereIn('app_id', $appIds)
-            ->where('status', 'active')
-            ->orderByDesc('id')
-            ->get(['app_id', 'version']);
-
-        $map = [];
-        foreach ($versions as $ver) {
-            $ident = $idToIdent[(int) $ver->app_id] ?? '';
-            if ($ident === '' || isset($map[$ident])) {
-                continue;
-            }
-            $map[$ident] = (string) $ver->version;
-        }
-
-        // 无 active 版本时也标记在市场中（空版本）
-        foreach ($idToIdent as $ident) {
-            if (! array_key_exists($ident, $map)) {
-                $map[$ident] = '';
-            }
-        }
-
-        return $map;
-    }
-
     private function isNewer(string $remote, string $local): bool
     {
         $remote = trim($remote);
@@ -233,7 +187,6 @@ final class CloudInstalledCatalogService
         if ($remote === $local) {
             return false;
         }
-        // 优先语义化版本比较
         if (preg_match('/^\d+(\.\d+)*$/', $local) && preg_match('/^\d+(\.\d+)*$/', $remote)) {
             return version_compare($remote, $local, '>');
         }

@@ -1,64 +1,87 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Welcome;
 
-use Hyperf\DbConnection\Db;
+use App\Library\Cloud\SaasPublicClient;
+use Throwable;
 
 final class WelcomeMarketService
 {
     public function apps(array $params): array
     {
-        $q = Db::connection('platform')->table('market_app')->where('status', 'active');
+        $query = [
+            'page' => max(1, (int) ($params['page'] ?? 1)),
+            'page_size' => max(1, min(50, (int) ($params['page_size'] ?? 12))),
+            'group_by_family' => 1,
+        ];
         $keyword = trim((string) ($params['keyword'] ?? ''));
         if ($keyword !== '') {
-            $q->where(function ($w) use ($keyword) {
-                $w->where('title', 'like', '%' . $keyword . '%')
-                    ->orWhere('identifier', 'like', '%' . $keyword . '%');
-            });
+            $query['keyword'] = $keyword;
         }
-        $sort = (string) ($params['sort'] ?? 'default');
-        match ($sort) {
-            'newest' => $q->orderByDesc('id'),
-            'hot', 'download' => $q->orderByDesc('id'), // 无下载数字段时回退
-            default => $q->orderByDesc('id'),
-        };
-        $page = max(1, (int) ($params['page'] ?? 1));
-        $pageSize = max(1, min(50, (int) ($params['page_size'] ?? 12)));
-        $total = (clone $q)->count();
-        $rows = $q->forPage($page, $pageSize)->get([
-            'id', 'identifier', 'title', 'edition', 'family', 'description', 'cover_url', 'category', 'price_type', 'price', 'status',
-        ]);
+
+        try {
+            $data = SaasPublicClient::get('/store/apps', $query);
+        } catch (Throwable $e) {
+            return [
+                'list' => [],
+                'total' => 0,
+                'groups' => [],
+                'message' => $e->getMessage(),
+            ];
+        }
+
         $list = [];
-        foreach ($rows as $row) {
-            $item = (array) $row;
-            $item['edition'] = (string) ($item['edition'] ?? '');
-            $item['family'] = (string) (($item['family'] ?? '') !== '' ? $item['family'] : ($item['identifier'] ?? ''));
+        foreach (($data['list'] ?? []) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $item = [
+                'id' => (int) ($row['id'] ?? 0),
+                'identifier' => (string) ($row['identifier'] ?? ''),
+                'title' => (string) ($row['title'] ?? ''),
+                'edition' => (string) ($row['edition'] ?? ''),
+                'family' => (string) (($row['family'] ?? '') !== '' ? $row['family'] : ($row['identifier'] ?? '')),
+                'description' => (string) ($row['description'] ?? ''),
+                'cover_url' => (string) ($row['cover_url'] ?? ''),
+                'category' => (string) ($row['category'] ?? ''),
+                'price_type' => (string) ($row['price_type'] ?? ''),
+                'price' => $row['price'] ?? 0,
+                'status' => (string) ($row['status'] ?? 'active'),
+            ];
             $list[] = $item;
+        }
+
+        $groups = $data['groups'] ?? null;
+        if (! is_array($groups)) {
+            $groups = $this->groupByFamily($list);
         }
 
         return [
             'list' => $list,
-            'total' => $total,
-            'groups' => $this->groupByFamily($list),
+            'total' => (int) ($data['total'] ?? count($list)),
+            'groups' => $groups,
         ];
     }
 
     public function stats(): array
     {
-        $available = (int) Db::connection('platform')->table('market_app')->where('status', 'active')->count();
-        $totalApps = (int) Db::connection('platform')->table('market_app')->count();
-        $totalVersions = 0;
         try {
-            $totalVersions = (int) Db::connection('platform')->table('market_app_version')->count();
-        } catch (\Throwable) {
-            $totalVersions = $totalApps;
+            $data = SaasPublicClient::get('/store/stats');
+
+            return [
+                'total_apps' => (int) ($data['total_apps'] ?? 0),
+                'available_apps' => (int) ($data['available_apps'] ?? 0),
+                'total_versions' => (int) ($data['total_versions'] ?? 0),
+            ];
+        } catch (Throwable) {
+            return [
+                'total_apps' => 0,
+                'available_apps' => 0,
+                'total_versions' => 0,
+            ];
         }
-        return [
-            'total_apps' => $totalApps,
-            'available_apps' => $available,
-            'total_versions' => $totalVersions,
-        ];
     }
 
     /**
