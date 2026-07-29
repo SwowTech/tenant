@@ -43,6 +43,16 @@ final class AppStaticService
         $response = new \Hyperf\HttpMessage\Base\Response();
         $response = $response->withStatus(200);
         $response = $response->withHeader('Content-Type', $this->mime($file));
+        // 带 hash 的构建资源可长期缓存；index.html 不缓存以免白屏指到旧 chunk
+        $base = basename($file);
+        if (preg_match('/\.[a-f0-9]{8}\.(js|css|mjs)$/i', $base) === 1) {
+            $response = $response->withHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } elseif (str_ends_with(strtolower($base), '.html') || str_ends_with(strtolower($base), '.htm')) {
+            $response = $response->withHeader('Cache-Control', 'no-cache');
+        } else {
+            $response = $response->withHeader('Cache-Control', 'public, max-age=86400');
+        }
+        $response = $response->withHeader('X-App-Static', '1');
         $response = $response->withBody(new SwooleStream($body));
 
         return $response;
@@ -53,6 +63,10 @@ final class AppStaticService
         $response = new \Hyperf\HttpMessage\Base\Response();
         $response = $response->withStatus($status);
         $response = $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        if ($status >= 400) {
+            $response = $response->withHeader('Cache-Control', 'no-store');
+            $response = $response->withHeader('CDN-Cache-Control', 'no-store');
+        }
         $response = $response->withBody(new SwooleStream($text));
 
         return $response;

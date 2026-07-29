@@ -84,7 +84,7 @@ final class AppGatewayDispatch
 
             if (AppManifest::proxyAll($manifest)) {
                 // SPA/静态资源（如 /admin/*.css）优先由宿主直出，避免 PHP built-in + TP6 误判成路由 404
-                if ($this->isPublicStaticPath($path)) {
+                if ($this->isPublicStaticPath($path) || AppManifest::isStaticAssetPath($path)) {
                     $webRoot = AppManifest::webDir($manifest, $identifier);
                     $candidate = $webRoot . '/' . $path;
                     if (is_file($candidate)) {
@@ -165,6 +165,11 @@ final class AppGatewayDispatch
         $response = new \Hyperf\HttpMessage\Base\Response();
         $response = $response->withStatus($status);
         $response = $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        // 避免 Cloudflare 把 404 缓存 4 小时（max-age=14400）导致修完仍白屏
+        if ($status >= 400) {
+            $response = $response->withHeader('Cache-Control', 'no-store');
+            $response = $response->withHeader('CDN-Cache-Control', 'no-store');
+        }
         $response = $response->withBody(new \Hyperf\HttpMessage\Stream\SwooleStream($text));
 
         return $response;
