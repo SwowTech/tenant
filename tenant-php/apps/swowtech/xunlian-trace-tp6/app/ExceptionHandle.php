@@ -72,11 +72,9 @@ class ExceptionHandle extends Handle
 
         $httpCode = ($e instanceof HttpException) ? $e->getStatusCode() : 400;
         $msg = $e->getMessage() ?: '服务器错误';
-        // 对外统一业务码，避免 nginx 错误页二次转发污染
-        return app('json')->code($httpCode >= 400 ? $httpCode : 400)->make(
-            $httpCode >= 400 ? $httpCode : 400,
-            $msg,
-            $safeData
-        );
+        // HTTP 用 200，业务码放 JSON，避免反代/CDN 丢掉 5xx 响应体
+        $biz = $httpCode >= 400 ? $httpCode : 400;
+
+        return app('json')->code(200)->make($biz, $msg, $safeData);
     }
 }

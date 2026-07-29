@@ -81,6 +81,84 @@ if ($uri !== '/' && is_dir($dir) && in_array($method, ['GET', 'HEAD', 'OPTIONS']
     }
 }
 
+// 运维诊断：不进 TP6，直接测 DB_* / PDO（部署后访问 /__diag）
+if ($uri === '/__diag') {
+    header('Content-Type: application/json; charset=utf-8');
+    $hostEnv = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'host_env.php';
+    if (is_file($hostEnv)) {
+        require_once $hostEnv;
+        if (function_exists('mine_apps_load_host_env')) {
+            mine_apps_load_host_env();
+        }
+    }
+    $info = [
+        'listen' => getenv('APP_LISTEN') ?: null,
+        'site_path' => getenv('APP_SITE_PATH') ?: null,
+        'db' => [
+            'host' => getenv('DB_HOST') ?: null,
+            'port' => getenv('DB_PORT') ?: null,
+            'database' => getenv('DB_DATABASE') ?: null,
+            'username' => getenv('DB_USERNAME') ?: null,
+            'password_set' => getenv('DB_PASSWORD') !== false,
+        ],
+        'headers' => [
+            'x_tenant_id' => $_SERVER['HTTP_X_TENANT_ID'] ?? null,
+            'x_tenant_prefix' => $_SERVER['HTTP_X_TENANT_PREFIX'] ?? null,
+        ],
+        'pdo' => null,
+        'error' => null,
+    ];
+    try {
+        $dsn = sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            (string) (getenv('DB_HOST') ?: '127.0.0.1'),
+            (string) (getenv('DB_PORT') ?: '3306'),
+            (string) (getenv('DB_DATABASE') ?: 'mineadmin'),
+        );
+        $pdo = new PDO(
+            $dsn,
+            (string) (getenv('DB_USERNAME') ?: 'root'),
+            getenv('DB_PASSWORD') !== false ? (string) getenv('DB_PASSWORD') : '',
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
+        );
+        $tid = (int) ($_SERVER['HTTP_X_TENANT_ID'] ?? 0);
+        $like = $tid > 0 ? ('cy_' . $tid . '_xlsy_sys_config') : '%xlsy_sys_config';
+        $stmt = $pdo->query("SHOW TABLES LIKE " . $pdo->quote($like));
+        $info['pdo'] = [
+            'ok' => true,
+            'sys_config_table' => $stmt ? $stmt->fetchColumn() : null,
+        ];
+    } catch (Throwable $e) {
+        $info['error'] = $e->getMessage();
+        http_response_code(500);
+    }
+    echo json_encode($info, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+    return true;
+}
+
+// 捕获致命错误，避免正式环境空 body 的 500
+register_shutdown_function(static function (): void {
+    $err = error_get_last();
+    if ($err === null) {
+        return;
+    }
+    $fatal = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
+    if (! in_array($err['type'], $fatal, true)) {
+        return;
+    }
+    if (! headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+    }
+    echo json_encode([
+        'code' => 500,
+        'message' => $err['message'],
+        'file' => $err['file'],
+        'line' => $err['line'],
+    ], JSON_UNESCAPED_UNICODE);
+});
+
 // 修复 PHP built-in server 的 PATH_INFO，确保 TP6 路由正确解析
 $_SERVER['PATH_INFO'] = $uri;
 $_SERVER['ORIG_PATH_INFO'] = $uri;
