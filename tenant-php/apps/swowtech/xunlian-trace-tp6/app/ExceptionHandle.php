@@ -72,9 +72,17 @@ class ExceptionHandle extends Handle
 
         $httpCode = ($e instanceof HttpException) ? $e->getStatusCode() : 400;
         $msg = $e->getMessage() ?: '服务器错误';
-        // HTTP 用 200，业务码放 JSON，避免反代/CDN 丢掉 5xx 响应体
         $biz = $httpCode >= 400 ? $httpCode : 400;
 
-        return app('json')->code(200)->make($biz, $msg, $safeData);
+        try {
+            return app('json')->code(200)->make($biz, $msg, $safeData);
+        } catch (Throwable) {
+            // utils\Json 缺失时仍返回可读 JSON，避免空 500
+            return Response::create([
+                'status' => $biz,
+                'msg' => $msg,
+                'data' => $safeData,
+            ], 'json', 200);
+        }
     }
 }
