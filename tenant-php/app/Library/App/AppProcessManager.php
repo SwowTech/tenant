@@ -245,7 +245,8 @@ final class AppProcessManager
         if (is_string($yiqiDb) && $yiqiDb !== '') {
             $out['YIQICMS_DB_NAME'] = $yiqiDb;
         } elseif (! isset($out['YIQICMS_DB_NAME'])) {
-            $out['YIQICMS_DB_NAME'] = 'zzzcms';
+            // 正式环境账号通常只有宿主库权限；勿默认 zzzcms（易 1044）
+            $out['YIQICMS_DB_NAME'] = $out['DB_DATABASE'] ?? 'mineadmin';
         }
 
         return $out;

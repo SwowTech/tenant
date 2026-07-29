@@ -80,6 +80,9 @@ if (is_array($conf['db'] ?? null)) {
 	if ($dbName === false || $dbName === '') {
 		$dbName = getenv('APP_DB_NAME');
 	}
+	if ($dbName === false || $dbName === '') {
+		$dbName = getenv('DB_DATABASE');
+	}
 	if (is_string($dbName) && $dbName !== '') {
 		$conf['db']['name'] = $dbName;
 	}

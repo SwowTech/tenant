@@ -34,7 +34,11 @@ $conf=array(
 //mysql（账号密码优先读宿主注入的 DB_* 环境变量）
 'host'=> (getenv('DB_HOST') !== false && getenv('DB_HOST') !== '') ? (string) getenv('DB_HOST') : '127.0.0.1',
 'port'=> (getenv('DB_PORT') !== false && getenv('DB_PORT') !== '') ? (string) getenv('DB_PORT') : '3306',
-'name'=> (getenv('YIQICMS_DB_NAME') !== false && getenv('YIQICMS_DB_NAME') !== '') ? (string) getenv('YIQICMS_DB_NAME') : 'zzzcms',
+'name'=> (getenv('YIQICMS_DB_NAME') !== false && getenv('YIQICMS_DB_NAME') !== '')
+    ? (string) getenv('YIQICMS_DB_NAME')
+    : ((getenv('DB_DATABASE') !== false && getenv('DB_DATABASE') !== '')
+        ? (string) getenv('DB_DATABASE')
+        : 'zzzcms'),
 'user'=> (getenv('DB_USERNAME') !== false && getenv('DB_USERNAME') !== '') ? (string) getenv('DB_USERNAME') : 'root',
 'password'=> getenv('DB_PASSWORD') !== false ? (string) getenv('DB_PASSWORD') : '',
 'charset'=>'utf8',
