@@ -39,27 +39,14 @@ final class Db
         return self::$pdo;
     }
 
-    /** CLI 无宿主注入时，从 user-php/.env 读取 DB_*（apps/.../app -> 上 4 级） */
+    /** 无宿主注入时，经 apps/host_env.php 读 user-php/.env */
     private static function loadEnvFallback(): void
     {
-        if (getenv('DB_PASSWORD') !== false) {
-            return;
-        }
-        $envFile = dirname(__DIR__, 4) . '/.env';
-        if (! is_file($envFile)) {
-            return;
-        }
-        foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#') || ! str_contains($line, '=')) {
-                continue;
-            }
-            [$k, $v] = explode('=', $line, 2);
-            $k = trim($k);
-            $v = trim($v, " \t\"'");
-            if ($k !== '' && getenv($k) === false) {
-                putenv("{$k}={$v}");
-                $_ENV[$k] = $v;
+        $helper = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'host_env.php';
+        if (is_file($helper)) {
+            require_once $helper;
+            if (function_exists('mine_apps_load_host_env')) {
+                mine_apps_load_host_env();
             }
         }
     }

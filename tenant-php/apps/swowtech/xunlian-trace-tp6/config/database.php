@@ -2,14 +2,33 @@
 
 use think\facade\Env;
 
-// 宿主 AppProcessManager 注入的 DB_* 优先于 .env
-$dbHost = getenv('DB_HOST') ?: Env::get('database.hostname', '127.0.0.1');
-$dbPort = getenv('DB_PORT') ?: Env::get('database.hostport', '3306');
-$dbUser = getenv('DB_USERNAME') ?: Env::get('database.username', 'root');
+// 正式部署：宿主未注入 DB_* 时，从 user-php/.env 兜底
+$hostEnv = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'host_env.php';
+if (is_file($hostEnv)) {
+    require_once $hostEnv;
+    mine_apps_load_host_env();
+}
+
+// 宿主 AppProcessManager 注入的 DB_* 优先于应用本地 .env
+$dbHost = getenv('DB_HOST');
+$dbHost = ($dbHost !== false && $dbHost !== '') ? (string) $dbHost : (string) Env::get('database.hostname', '127.0.0.1');
+$dbPort = getenv('DB_PORT');
+$dbPort = ($dbPort !== false && $dbPort !== '') ? (string) $dbPort : (string) Env::get('database.hostport', '3306');
+$dbUser = getenv('DB_USERNAME');
+$dbUser = ($dbUser !== false && $dbUser !== '') ? (string) $dbUser : (string) Env::get('database.username', 'root');
+$dbName = getenv('DB_DATABASE');
+$dbName = ($dbName !== false && $dbName !== '') ? (string) $dbName : (string) Env::get('database.database', 'mineadmin');
+$dbCharset = getenv('DB_CHARSET');
+$dbCharset = ($dbCharset !== false && $dbCharset !== '') ? (string) $dbCharset : (string) Env::get('database.charset', 'utf8mb4');
+
 $dbPass = getenv('DB_PASSWORD');
 if ($dbPass === false) {
-    $dbPass = Env::get('database.password', '123456');
+    // 未注入时才读应用 .env；勿写死 123456（正式环境必炸）
+    $dbPass = (string) Env::get('database.password', '');
+} else {
+    $dbPass = (string) $dbPass;
 }
+
 // 与 host 共用 mineadmin 库，按 X-Tenant-Id / X-Tenant-Prefix 动态切换表前缀
 $tenantId = (int) ($_SERVER['HTTP_X_TENANT_ID'] ?? 0);
 $tenantPrefix = (string) ($_SERVER['HTTP_X_TENANT_PREFIX'] ?? '');
@@ -31,12 +50,12 @@ return [
         'mysql' => [
             'type' => Env::get('database.type', 'mysql'),
             'hostname' => $dbHost,
-            'database' => Env::get('database.database', 'mineadmin'),
+            'database' => $dbName,
             'username' => $dbUser,
             'password' => $dbPass,
             'hostport' => $dbPort,
             'params' => [],
-            'charset' => Env::get('database.charset', 'utf8'),
+            'charset' => $dbCharset,
             'prefix' => $dbPrefix,
             'debug' => Env::get('database.debug', true),
             'deploy' => 0,

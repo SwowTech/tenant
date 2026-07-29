@@ -49,6 +49,14 @@ if (is_string($envSitePath) && $envSitePath !== '') {
     define('SITE_DIR', DOC_DIR . SITE_PATH);
 }
 define( 'CONF_DIR', SITE_DIR . 'config/' );
+// 正式部署：宿主未注入 DB_* 时，从 user-php/.env 兜底
+$hostEnv = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'host_env.php';
+if (is_file($hostEnv)) {
+	require_once $hostEnv;
+	if (function_exists('mine_apps_load_host_env')) {
+		mine_apps_load_host_env();
+	}
+}
 include SITE_DIR . 'config/zzz_config.php';
 // 宿主网关启动时可注入 DB_*，覆盖本地安装配置中的空密码等
 if (is_array($conf['db'] ?? null)) {
