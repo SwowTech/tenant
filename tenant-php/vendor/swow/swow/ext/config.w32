@@ -1,0 +1,486 @@
+
+// vim:ft=javascript
+ARG_ENABLE('swow', 'Enable Swow support', 'yes');
+ARG_ENABLE('swow-debug', 'Enable Swow debug build flags', 'no');
+ARG_ENABLE('swow-debug-log', 'Enable Swow debug log (it is enabled by default even in release build)', 'yes');
+ARG_ENABLE('swow-ssl', 'Enable Swow OpenSSL support', 'yes');
+ARG_ENABLE('swow-curl', 'Enable Swow cURL support', 'yes');
+ARG_ENABLE('swow-pdo-pgsql', 'Enable Swow PDO_PGSQL support', 'yes');
+
+if (PHP_SWOW != 'no') (function(){
+
+    var SWOW_TARGET_ARCH = 'x64';
+    try {
+        if (TARGET_ARCH) {
+            SWOW_TARGET_ARCH = TARGET_ARCH;
+        }
+    } catch (_) {
+        // do nothing
+    }
+
+    var SWOW_ASSEMBLER = PATH_PROG({
+        'x64':'ML64',
+        'x86':'ML',
+        'arm64':'ARMASM64'
+    }[SWOW_TARGET_ARCH]);
+
+    try {
+        if (PHP_ASSEMBLER) {
+            SWOW_ASSEMBLER = PHP_ASSEMBLER;
+        }
+    } catch (_) {
+        // do nothing
+    }
+
+    function swow_map(arr, func){
+        var ret = [];
+        if(typeof arr == 'object' && arr instanceof Array){
+            for(var i = 0; i < arr.length; i++){
+                ret.push(func(arr[i]));
+            }
+        }
+        return ret;
+    }
+
+    // check used libs
+    if(
+        !CHECK_LIB('Iphlpapi.lib', 'swow', PHP_SWOW) ||
+        !CHECK_LIB('Userenv.lib', 'swow', PHP_SWOW) ||
+        !CHECK_LIB('Dbghelp.lib', 'swow', PHP_SWOW)
+    ){
+        WARNING('Swow not enabled; libraries not found');
+        return;
+    }
+
+    // check ml64
+    if(!SWOW_ASSEMBLER){
+        WARNING('Swow not enabled; assembler not found');
+        return;
+    }
+
+    var use_ssl = 0;
+    if('no' !== PHP_SWOW_SSL){
+        if (0 < SETUP_OPENSSL("swow", PHP_SWOW)) {
+            ADD_FLAG('CFLAGS_SWOW_COMMON', '/D CAT_HAVE_OPENSSL');
+            use_ssl = 1;
+        } else {
+            WARNING("Swow OpenSSL support not enabled; libraries and headers not found");
+        }
+    }
+
+    var use_curl = 0;
+    if('no' !== PHP_SWOW_CURL){
+        if (CHECK_LIB("libcurl_a.lib;libcurl.lib", "swow", PHP_SWOW) &&
+            //CHECK_HEADER_ADD_INCLUDE("curl/easy.h", "CFLAGS_SWOW") &&
+            SETUP_OPENSSL("swow", PHP_SWOW) > 0 &&
+            CHECK_LIB("winmm.lib", "swow", PHP_SWOW) &&
+            CHECK_LIB("wldap32.lib", "swow", PHP_SWOW) &&
+            CHECK_LIB("zlib_a.lib;zlib.lib", "swow", PHP_SWOW) &&
+            CHECK_LIB("normaliz.lib", "swow", PHP_SWOW) &&
+            CHECK_LIB("libssh2.lib", "swow", PHP_SWOW) &&
+            CHECK_LIB("nghttp2.lib", "swow", PHP_SWOW))
+            {
+            ADD_FLAG("CFLAGS_SWOW_COMMON", "/D CAT_HAVE_CURL");
+            ADD_FLAG("CFLAGS_SWOW_COMMON", "/D CURL_STATICLIB");
+            // TODO: check for curl_version_info
+            use_curl = 1;
+        } else {
+            WARNING("Swow cURL support not enabled; libraries and headers not found");
+            WARNING("To enable Swow cURL support using official pre-built deps and dlls,\r\n"+
+                "you need deps curl,openssl,zlib,libssh2,nghttp2.\r\n"+
+                "You may also want build curl yourself and add it into search path using --with-php-build=\r\n"+
+                "See PHP official documents for Windows build for detail.");
+        }
+    }
+
+    var use_pgsql = 0;
+    if('no' !== PHP_SWOW_PDO_PGSQL){
+        if (CHECK_HEADER_ADD_INCLUDE("libpq-fe.h", "CFLAGS_SWOW", PHP_SWOW_PDO_PGSQL + "\\include;" + PHP_PHP_BUILD + "\\include\\pgsql;" + PHP_PHP_BUILD + "\\include\\libpq;") &&
+            CHECK_LIB("libpq.lib", "swow", PHP_SWOW) &&
+            SETUP_OPENSSL("swow", PHP_SWOW) > 0)
+            {
+            ADD_FLAG("CFLAGS_SWOW_COMMON", "/D CAT_HAVE_PQ");
+            if (PHP_SWOW_PDO_PGSQL != 'yes' && PHP_SWOW_PDO_PGSQL != 'no') {
+                ADD_FLAG("CFLAGS_SWOW_COMMON", "/I " + PHP_SWOW_PDO_PGSQL + "\\include");
+            }
+            ADD_FLAG("CFLAGS_SWOW_COMMON", "/I " + PHP_PHP_BUILD + "\\include\\pgsql");
+            ADD_FLAG("CFLAGS_SWOW_COMMON", "/I " + PHP_PHP_BUILD + "\\include\\libpq");
+            use_pgsql = 1;
+        } else {
+            WARNING("Swow PDO_PGSQL support not enabled; libraries and headers not found");
+            WARNING("To enable Swow PDO_PGSQL support using offical pre-built deps and dlls,\r\n"+
+                "you need deps libpq,openssl.\r\n"+
+                "You may also want build PDO_PGSQL yourself and add it into search path using --with-php-build=\r\n"+
+                "See PHP offical documents for Windows build for detail.");
+        }
+    }
+
+    // prepare for git version in swow.c
+    var git_cflags = "";
+    var SWOW_GIT = PATH_PROG('git');
+    var git_dir = configure_module_dirname + '\\..\\.git';
+    var swow_check_git = function(){
+        // prove git binary
+        if(!SWOW_GIT){
+            return false;
+        }
+        // prove git dir
+        if(!FSO.FolderExists(git_dir)){
+            return false;
+        }
+        git_dir = FSO.GetAbsolutePathName(git_dir);
+        var swow_exec = function (cmd){
+            var timeout = 100; // 100 * 100 == 10000ms == 10s
+            var e;
+            try{
+                e = WshShell.Exec(cmd);
+            }catch(x){
+                return {code: "execfail"};
+            }
+            while (e.Status == 0 && timeout > 0)
+            {
+                WScript.Sleep(100);
+                timeout = timeout-1;
+            }
+            if(e.Status == 0){
+                e.Terminate();
+                return {code: "timeout", stdout:e.StdOut.ReadAll(), stderr:e.StdErr.ReadAll()};
+            }
+            return {code: e.ExitCode, stdout:e.StdOut.ReadAll(), stderr:e.StdErr.ReadAll()};
+        };
+        // check if it's bare
+        var bare_check = swow_exec('"' +SWOW_GIT + '" "--git-dir=' + git_dir + '" rev-parse --is-bare-repository');
+        if(bare_check.code != 0 || bare_check.stdout.match(/.*true.*/)){
+            return false;
+        }
+        // if it's detached head, it's ok
+        var det_head = swow_exec('"' + SWOW_GIT + '" "--git-dir=' + git_dir + '" rev-parse --abbrev-ref --symbolic-full-name HEAD');
+        if(det_head.code != 0){
+            return false;
+        }
+        if(det_head.stdout && det_head.stdout.match(/^\s*HEAD\s*$/, '')){
+            // it's detached head
+            return true;
+        }
+        // prove it's swow's git dir
+        var self_check = swow_exec('"' + SWOW_GIT + '" "--git-dir=' + git_dir + '" branch --contains e874691b20cddae2d169e47c05b7b42464f11cc0');
+        if(self_check.code != 0 || !self_check.stdout.match(/.*\*.*/)){
+            return false;
+        }
+        return true;
+    }
+
+    if(swow_check_git()){
+
+        DEFINE("SWOW_GIT", SWOW_GIT);
+        var temp_dir = '$(BUILD_DIR)\\ext\\swow\\build';
+        var git_header = temp_dir + "\\git_version.h";
+
+        var git_ver_target = "swow_git_version";
+        ADD_FLAG("DEPS_SWOW", git_ver_target);
+        var git_ver_cmd = '$(SWOW_GIT) "--work-tree=' + git_dir.replace(/\\*\.git$/, "") + '" "--git-dir=' + git_dir + '" describe --always "--abbrev=8" --dirty';
+        //var gitcmd = 'notgit "--git-dir=' + git_dir + '" describe --always "--abbrev=8" --dirty';
+        MFO.WriteLine(git_ver_target + ":");
+        MFO.WriteLine('    @ECHO Get Swow git version by $(SWOW_GIT)' );
+        MFO.WriteLine('    @IF NOT EXIST ' + temp_dir + ' MKDIR ' + temp_dir);
+        MFO.WriteLine('    @ECHO #define SWOW_GIT_VERSION "" > ' + git_header);
+        MFO.WriteLine('    -@FOR /F "tokens=* USEBACKQ" %F IN (`\\');
+        MFO.WriteLine('        ' + git_ver_cmd + '\\');
+        MFO.WriteLine('    `) DO @( \\');
+        MFO.WriteLine('        ECHO Got Swow git version: %%F &&\\' );
+        MFO.WriteLine('        ECHO #define SWOW_GIT_VERSION "-%%F" > ' + git_header + '\\');
+        MFO.WriteLine('    )');
+        MFO.WriteLine('');
+
+        ADD_FLAG("SWOW_GIT_VERSION_CFLAG", "/FI " + git_header);
+        git_cflags = "$(SWOW_GIT_VERSION_CFLAG)";
+    }
+
+    //ADD_MAKEFILE_FRAGMENT()
+
+    // definations
+    // no, we donot use config.h, that thing have non-unified behavior
+    //ADD_FLAG("CFLAGS_SWOW", "/D HAVE_CONFIG_H");
+    ADD_FLAG('CFLAGS_SWOW', '/D HAVE_SWOW $(CFLAGS_SWOW_COMMON)');
+    ADD_FLAG('CFLAGS_SWOW_COMMON', '/D HAVE_LIBCAT /D CAT_VM');
+
+    if (PHP_SWOW_DEBUG != 'no'){
+        ADD_FLAG('CFLAGS_SWOW_COMMON', '/D CAT_DEBUG');
+        // add (warning) cflags for swow
+        ADD_FLAG("CFLAGS_SWOW", "/W3");
+        // string formating warings like -Wformat
+        ADD_FLAG("CFLAGS_SWOW", "/w14473 /w14774 /w14775 /w14776 /w14777 /w14778");
+        // -Wincompatible-pointer-types-discards-qualifiers like
+        ADD_FLAG("CFLAGS_SWOW", "/w14090");
+        // -Wuninitialized or -Winit-self like
+        ADD_FLAG("CFLAGS_SWOW", "/w14700");
+        // -Werror=implicit-function-declaration like
+        ADD_FLAG("CFLAGS_SWOW", "/we4013");
+    }
+    ADD_FLAG("CFLAGS_SWOW_COMMON", "/wd4244");
+    // -Wno-sign-compare like
+    ADD_FLAG("CFLAGS_SWOW_COMMON", "/wd4018");
+    // -Wno-unused-parameter like
+    ADD_FLAG("CFLAGS_SWOW_COMMON", "/wd4100");
+    // seems to be a MSVC bug
+    ADD_FLAG("CFLAGS_SWOW_COMMON", "/wd5286");
+    ADD_FLAG("CFLAGS_SWOW_COMMON", "/wd5287");
+
+    // header dependencies
+    var LIBCAT_DIR = "deps\\libcat";
+    var IPV6_PARSE_DIR = "deps\\ipv6-parse";
+    var UV_DIR = LIBCAT_DIR + "\\deps\\libuv";
+    var LLHTTP_DIR = LIBCAT_DIR + "\\deps\\llhttp";
+    var MULTIPART_PARSER_C_DIR = LIBCAT_DIR + "\\deps\\multipart-parser-c";
+
+    // swow uses self
+    ADD_FLAG('CFLAGS_SWOW', '/I "' + configure_module_dirname + '\\include"');
+    // swow uses libcat(libuv, llhttp, multipart-parser)
+    ADD_FLAG('CFLAGS_SWOW', '/I "' + configure_module_dirname + '\\' + LIBCAT_DIR + '\\include"');
+    ADD_FLAG('CFLAGS_SWOW', '/I "' + configure_module_dirname + '\\' + UV_DIR + '/include"');
+    ADD_FLAG('CFLAGS_SWOW', '/I "' + configure_module_dirname + '\\' + LLHTTP_DIR + '/include"');
+    ADD_FLAG('CFLAGS_SWOW', '/I "' + configure_module_dirname + '\\' + MULTIPART_PARSER_C_DIR + '"');
+    // libcat uses cat_vm.h from swow
+    ADD_FLAG('CFLAGS_SWOW_LIBCAT_OBJ', '/I "' + configure_module_dirname + '\\include"');
+    // libcat uses self
+    ADD_FLAG('CFLAGS_SWOW_LIBCAT_OBJ', '$(CFLAGS_SWOW_COMMON)');
+    ADD_FLAG('CFLAGS_SWOW_LIBCAT_OBJ', '/I "' + configure_module_dirname + '\\' + LIBCAT_DIR + '\\include"');
+    // libcat uses libuv
+    ADD_FLAG('CFLAGS_SWOW_LIBCAT_OBJ', '/I "' + configure_module_dirname + '\\' + UV_DIR + '/include"');
+    // libcat uses llhttp
+    ADD_FLAG('CFLAGS_SWOW_LIBCAT_OBJ', '/I "' + configure_module_dirname + '\\' + LLHTTP_DIR + '/include"');
+    // libcat uses multipart-parser
+    ADD_FLAG('CFLAGS_SWOW_LIBCAT_OBJ', '/I "' + configure_module_dirname + '\\' + MULTIPART_PARSER_C_DIR + '"');
+    // libuv uses self
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '$(CFLAGS_SWOW_COMMON)');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/wd4090');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/wd4267');
+    // C4334: https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-3-c4334?view=msvc-170
+    // for code like: `procmask & (1 << i)`, `threadmask |= 1 << i`
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/wd4334');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/wd4548');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/wd4819');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/wd4996');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/I "' + configure_module_dirname + '\\' + UV_DIR + '/include"');
+    ADD_FLAG('CFLAGS_SWOW_LIBUV_OBJ', '/I "' + configure_module_dirname + '\\' + UV_DIR + '/src"');
+    // llhttp uses self
+    ADD_FLAG('CFLAGS_SWOW_LLHTTP_OBJ', '$(CFLAGS_SWOW_COMMON)');
+    ADD_FLAG('CFLAGS_SWOW_LLHTTP_OBJ', '/I "' + configure_module_dirname + '\\' + LLHTTP_DIR + '/include"');
+    // multipart-parser uses self
+    ADD_FLAG('CFLAGS_SWOW_LLHTTP_OBJ', '$(CFLAGS_SWOW_COMMON)');
+    ADD_FLAG('CFLAGS_SWOW_MULTIPART_PARSER_C_OBJ', '/I "' + configure_module_dirname + '\\' + MULTIPART_PARSER_C_DIR + '"');
+    // swow uses ipv6-parse
+    ADD_FLAG('CFLAGS_SWOW', '/I "' + configure_module_dirname + '\\' + IPV6_PARSE_DIR + '"');
+    // ipv6-parse uses self
+    ADD_FLAG('CFLAGS_SWOW_IPV6_PARSE_OBJ', '/I "' + configure_module_dirname + '\\' + IPV6_PARSE_DIR + '"');
+
+    // sources
+    var SWOW_SRC_DIR='src';
+    var SWOW_SOURCE_FILENAMES = [
+        'swow_main.c',
+        'swow_wrapper.c',
+        'swow_errno.c',
+        'swow_log.c',
+        'swow_exception.c',
+        'swow_debug.c',
+        'swow_utils.c',
+        'swow_hook.c',
+        'swow_defer.c',
+        'swow_coroutine.c',
+        'swow_channel.c',
+        'swow_sync.c',
+        'swow_event.c',
+        'swow_time.c',
+        'swow_buffer.c',
+        'swow_socket.c',
+        'swow_dns.c',
+        'swow_fs.c',
+        'swow_stream.c',
+        'swow_stream_wrapper.c',
+        'swow_ssl.c',
+        'swow_signal.c',
+        'swow_watchdog.c',
+        'swow_closure.c',
+        'swow_tokenizer.c',
+        'swow_ipaddress.c',
+        'swow_http.c',
+        'swow_websocket.c',
+        'swow_weak_symbol.c' // <-- wsh donot support comma here!
+    ];
+    /* not implemented
+    if(use_ssl){
+        SWOW_SOURCE_FILENAMES.push('swow_ssl.c');
+    }
+    */
+    if(use_curl){
+        SWOW_SOURCE_FILENAMES.push('swow_curl.c', 'swow_curl_interface.c', 'swow_curl_multi.c', 'swow_curl_file.c', 'swow_curl_share.c');
+    }
+    if(use_pgsql){
+        SWOW_SOURCE_FILENAMES.push('swow_pgsql_driver.c', 'swow_pgsql_statement.c', 'swow_pgsql_version.c');
+        if (PHP_VERSION >= 8 && PHP_MINOR_VERSION >= 4) {
+            SWOW_SOURCE_FILENAMES.push('swow_pgsql_sql_parser.c');
+        }
+    }
+    ADD_SOURCES(configure_module_dirname + '\\' + SWOW_SRC_DIR, SWOW_SOURCE_FILENAMES.join(' '), 'swow');
+
+    // dependecies
+
+    // libcat self sources
+    var CAT_SOURCE_FILENAMES = [
+        'cat_cp.c',
+        'cat_memory.c',
+        'cat_string.c',
+        'cat_error.c',
+        'cat_log.c',
+        'cat_env.c',
+        'cat.c',
+        'cat_api.c',
+        'cat_coroutine.c',
+        'cat_channel.c',
+        'cat_sync.c',
+        'cat_event.c',
+        'cat_poll.c' ,
+        'cat_time.c',
+        'cat_socket.c',
+        'cat_dns.c',
+        'cat_work.c',
+        'cat_buffer.c',
+        'cat_fs.c',
+        'cat_signal.c',
+        'cat_async.c',
+        'cat_watchdog.c',
+        'cat_http.c',
+        'cat_websocket.c'
+    ];
+    if(use_ssl){
+        CAT_SOURCE_FILENAMES.push('cat_ssl.c');
+    }
+    if(use_curl){
+        CAT_SOURCE_FILENAMES.push('cat_curl.c');
+    }
+    if(use_pgsql){
+        CAT_SOURCE_FILENAMES.push('cat_pq.c');
+    }
+    ADD_SOURCES(configure_module_dirname + '\\' + LIBCAT_DIR + '\\src', CAT_SOURCE_FILENAMES.join(' '), 'swow_libcat');
+    ADD_FLAG("SWOW_GLOBAL_OBJS", "$(SWOW_LIBCAT_GLOBAL_OBJS)");
+    ADD_FLAG("LIBS_SWOW", "$(SWOW_LIBCAT_GLOBAL_OBJS_RESP)");
+
+    // boost context asm files
+    // TODO: arch specified
+    DEFINE('SWOW_ASSEMBLER', SWOW_ASSEMBLER);
+    var CAT_CONTEXT_ASM_DIR = LIBCAT_DIR + '\\deps\\context\\asm';
+    var CAT_CONTEXT_FILENAMES;
+    switch (SWOW_TARGET_ARCH) {
+        case 'x64':
+            CAT_CONTEXT_FILENAMES = ['jump_x86_64_ms_pe_masm.asm', 'make_x86_64_ms_pe_masm.asm'];
+            break;
+        case 'x86':
+            CAT_CONTEXT_FILENAMES = ['jump_i386_ms_pe_masm.asm', 'make_i386_ms_pe_masm.asm'];
+            break;
+        case 'arm64':
+            CAT_CONTEXT_FILENAMES = ['jump_arm64_aapcs_pe_armasm.asm', 'make_arm64_aapcs_pe_armasm.asm'];
+            break;
+    }
+    swow_map(CAT_CONTEXT_FILENAMES, function(e){
+        // $(BUILD_DIR)/ext/swow/ may cause problem,
+        // however, no solution for this yet
+        var src = (configure_module_dirname + "\\" + CAT_CONTEXT_ASM_DIR + "\\" + e).replace( /\//g ,'\\');
+
+        var obj = ('$(BUILD_DIR)\\ext\\swow\\' + CAT_CONTEXT_ASM_DIR + '\\' + e).replace(/.asm$/, '.obj'); // target obj name
+        //var obj = src.replace(/.asm$/, '.obj'); // target obj name
+
+        // add asm objs to swow objs and libs
+        ADD_FLAG("SWOW_GLOBAL_OBJS", obj);
+        ADD_FLAG("LIBS_SWOW", obj);
+        // let "make clean" remove objects
+        ADD_FLAG("BUILD_DIRS_SUB", '$(BUILD_DIR)\\ext\\swow\\' + CAT_CONTEXT_ASM_DIR);
+        //ADD_SOURCES(configure_module_dirname + "\\" + CAT_CONTEXT_ASM_DIR, e.replace(/.asm$/, '.obj'));
+        // instant write rule
+        MFO.WriteLine(obj + ': ' + src);
+        var objdir = obj.replace(/\\[^\\]+$/, "");
+        MFO.WriteLine('    @IF NOT EXIST ' + objdir + ' MKDIR ' + objdir);
+        if (SWOW_TARGET_ARCH == 'arm64') {
+            MFO.WriteLine('    @$(SWOW_ASSEMBLER) -nologo -machine ARM64 -o ' + obj + ' ' + src);
+        } else {
+            MFO.WriteLine('    @$(SWOW_ASSEMBLER) /nologo ' + '/Fo' + obj + ' /c ' + src); // dont know why /Fo broken
+        }
+    });
+
+    // libuv sources
+    // platform-independent sources
+    var UV_SOURCE_FILENAMES = [
+        'fs-poll.c',
+        'idna.c',
+        'inet.c',
+        'random.c',
+        'strscpy.c',
+        'threadpool.c',
+        'timer.c',
+        'uv-common.c',
+        'uv-data-getter-setters.c',
+        'version.c'
+    ]
+    ADD_SOURCES(configure_module_dirname + '\\' + UV_DIR + '\\src', UV_SOURCE_FILENAMES.join(" "), "swow_libuv");
+    // platform-specified sources
+    var UV_WIN_SOURCE_FILENAMES = [
+        'async.c',
+        'core.c',
+        'detect-wakeup.c',
+        'dl.c',
+        'error.c',
+        'fs-event.c',
+        'fs.c',
+        'getaddrinfo.c',
+        'getnameinfo.c',
+        'handle.c',
+        'loop-watcher.c',
+        'pipe.c',
+        'poll.c',
+        'process-stdio.c',
+        'process.c',
+        'signal.c',
+        'snprintf.c',
+        'stream.c',
+        'tcp.c',
+        'thread.c',
+        'tty.c',
+        'udp.c',
+        'util.c',
+        'winapi.c',
+        'winsock.c'
+    ];
+    ADD_SOURCES(configure_module_dirname + '\\' + UV_DIR + '\\src\\win', UV_WIN_SOURCE_FILENAMES.join(" "), "swow_libuv");
+    ADD_FLAG("SWOW_GLOBAL_OBJS", "$(SWOW_LIBUV_GLOBAL_OBJS)");
+    ADD_FLAG("LIBS_SWOW", "$(SWOW_LIBUV_GLOBAL_OBJS_RESP)");
+
+    // ?: SWOW_DEFINE(_FILE_OFFSET_BITS, 64, [_FILE_OFFSET_BITS])
+    // ?: SWOW_DEFINE(_LARGEFILE_SOURCE, , [_LARGEFILE_SOURCE])
+
+    // llhttp sources
+    var LLHTTP_SOURCE_FILENAMES=[
+        "api.c",
+        "http.c",
+        "llhttp.c"
+    ];
+    ADD_SOURCES(configure_module_dirname + '\\' + LLHTTP_DIR + '\\src', LLHTTP_SOURCE_FILENAMES.join(" "), "swow_llhttp");
+    ADD_FLAG("SWOW_GLOBAL_OBJS", "$(SWOW_LLHTTP_GLOBAL_OBJS)");
+    ADD_FLAG("LIBS_SWOW", "$(SWOW_LLHTTP_GLOBAL_OBJS_RESP)");
+
+    // multipart-parser sources
+    ADD_SOURCES(configure_module_dirname + '\\' + MULTIPART_PARSER_C_DIR, "multipart_parser.c", "swow_multipart_parser");
+    ADD_FLAG("SWOW_GLOBAL_OBJS", "$(SWOW_MULTIPART_PARSER_GLOBAL_OBJS)");
+    ADD_FLAG("LIBS_SWOW", "$(SWOW_MULTIPART_PARSER_GLOBAL_OBJS_RESP)");
+
+    // ipv6-parse sources
+    ADD_SOURCES(configure_module_dirname + '\\' + IPV6_PARSE_DIR, "ipv6.c", "swow_ipv6_parse");
+    ADD_FLAG("SWOW_GLOBAL_OBJS", "$(SWOW_IPV6_PARSE_GLOBAL_OBJS)");
+    ADD_FLAG("LIBS_SWOW", "$(SWOW_IPV6_PARSE_GLOBAL_OBJS_RESP)");
+
+    EXTENSION('swow', 'swow.c', PHP_SWOW_SHARED, git_cflags, "php_swow.dll");
+    //ADD_FLAG("PHP_SWOW_SWOW", "asmobjs");
+
+
+    //PHP_INSTALL_HEADERS("ext/swow", "include/cat_vm.h include/swow.h include/swow_api.h include/swow_buffer.h include/swow_channel.h include/swow_coroutine.h include/swow_debug.h include/swow_defer.h include/swow_event.h include/swow_exceptions.h include/swow_hook.h include/swow_http.h include/swow_log.h include/swow_signal.h include/swow_socket.h include/swow_stream.h include/swow_sync.h include/swow_time.h include/swow_watchdog.h include/swow_websocket.h include/swow_wrapper.h")
+    //ADD_FLAG('CFLAGS_SWOW', "/I ext/swow/deps/libcat/deps/libuv/src /I ext/swow/include /I deps/libcat/include /I deps/libcat/include/cat /I deps/libcat/deps/multipart-parser-c /I deps/libcat/deps/libuv/include /I deps/libcat/deps/llhttp/include/");
+
+})();

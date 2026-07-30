@@ -1,0 +1,2826 @@
+/*
+  +--------------------------------------------------------------------------+
+  | libcat                                                                   |
+  +--------------------------------------------------------------------------+
+  | Licensed under the Apache License, Version 2.0 (the "License");          |
+  | you may not use this file except in compliance with the License.         |
+  | You may obtain a copy of the License at                                  |
+  | http://www.apache.org/licenses/LICENSE-2.0                               |
+  | Unless required by applicable law or agreed to in writing, software      |
+  | distributed under the License is distributed on an "AS IS" BASIS,        |
+  | WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. |
+  | See the License for the specific language governing permissions and      |
+  | limitations under the License. See accompanying LICENSE file.            |
+  +--------------------------------------------------------------------------+
+  | Author: dixyes <dixyes@gmail.com>                                        |
+  |         Twosee <twosee@php.net>                                          |
+  +--------------------------------------------------------------------------+
+ */
+
+#include "cat_fs.h"
+#include "cat_coroutine.h"
+#include "cat_event.h"
+#include "cat_time.h"
+#include "cat_work.h"
+#include "cat_async.h"
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+#include "cat_buffer.h" // for buffer_export_str()
+#endif
+
+#ifdef CAT_OS_WIN
+# include <winternl.h>
+#endif // CAT_OS_WIN
+
+#ifdef CAT_OS_WIN
+# ifdef _WIN64
+#  define fseeko _fseeki64
+#  define ftello _ftelli64
+# else
+#  define fseeko fseek
+#  define ftello ftell
+# endif // _WIN64
+#endif // CAT_OS_WIN
+
+typedef enum cat_fs_error_type_e {
+    CAT_FS_ERROR_NONE = 0, // no error
+    CAT_FS_ERROR_ERRNO, // is errno
+    CAT_FS_ERROR_EOF, // is eof
+    CAT_FS_ERROR_CAT_ERRNO, // is cat_errno_t
+#ifdef CAT_OS_WIN
+    CAT_FS_ERROR_WIN32, // is GetLastError() result
+    // CAT_FS_ERROR_NT // is NTSTATUS, not implemented yet
+#endif // CAT_OS_WIN
+} cat_fs_error_type_t;
+
+typedef enum cat_fs_freer_type_e {
+    CAT_FS_FREER_NONE = 0, // do not free
+    CAT_FS_FREER_FREE, // free(x)
+    CAT_FS_FREER_CAT_FREE, // cat_free(x)
+#ifdef CAT_OS_WIN
+    CAT_FS_FREER_LOCAL_FREE, // LocalFree(x)
+    CAT_FS_FREER_HEAP_FREE, // HeapFree(GetProcessHeap(), 0, x)
+#endif // CAT_OS_WIN
+} cat_fs_freer_type_t;
+
+typedef struct cat_fs_error_s {
+    cat_fs_error_type_t type;
+    union {
+        int error;
+        cat_errno_t cat_errno;
+#ifdef CAT_OS_WIN
+        DWORD le;
+        // NTSTATUS nt;
+#endif // CAT_OS_WIN
+    } val;
+    cat_fs_freer_type_t msg_free;
+    const char *msg;
+} cat_fs_error_t;
+
+typedef union {
+    cat_coroutine_t *coroutine;
+    uv_req_t req;
+    uv_fs_t fs;
+} cat_fs_context_t;
+
+static cat_bool_t cat_fs_do_result(cat_fs_context_t *context, int error, const char *operation)
+{
+    cat_bool_t done;
+    cat_bool_t ret;
+
+    if (error != 0) {
+        cat_update_last_error_with_reason(error, "File-System %s init failed", operation);
+        errno = cat_orig_errno(cat_get_last_error_code());
+        // CAT_LOG_DEBUG(FS, "Failed uv_fs_%s context=%p, uv_errno=%d", operation, context, error);
+        cat_free(context);
+        return cat_false;
+    }
+    context->coroutine = CAT_COROUTINE_G(current);
+    ret = cat_time_wait(CAT_TIMEOUT_FOREVER);
+    done = context->coroutine == NULL;
+    context->coroutine = NULL;
+    if (unlikely(!ret)) {
+        cat_update_last_error_with_previous("File-System %s wait failed", operation);
+        (void) uv_cancel(&context->req);
+        errno = cat_orig_errno(cat_get_last_error_code());
+        // CAT_LOG_DEBUG(FS, "Failed %s() context=%p waiting failed", operation, context);
+        return cat_false;
+    }
+    if (unlikely(!done)) {
+        cat_update_last_error(CAT_ECANCELED, "File-System %s has been canceled", operation);
+        (void) uv_cancel(&context->req);
+        errno = ECANCELED;
+        // CAT_LOG_DEBUG(FS, "Failed %s() context=%p canceled", operation, context);
+        return cat_false;
+    }
+    if (unlikely(context->fs.result < 0)) {
+        cat_update_last_error_with_reason((cat_errno_t) context->fs.result, "File-System %s failed", operation);
+        errno = cat_orig_errno((cat_errno_t) context->fs.result);
+        // CAT_LOG_DEBUG(FS, "Failed %s() context=%p, uv_errno=%d", operation, context, (int) context->fs.result);
+        return cat_false;
+    }
+
+    // CAT_LOG_DEBUG(FS, "Done %s() context=%p", operation, context);
+    return cat_true;
+}
+
+#define CAT_FS_DO_RESULT_EX(on_fail, on_done, operation, ...) do { \
+    cat_fs_context_t *context = (cat_fs_context_t *) cat_malloc(sizeof(*context)); \
+    if (unlikely(context == NULL)) { \
+        cat_update_last_error_of_syscall("Malloc for file-system context failed"); \
+        errno = ENOMEM; \
+        {on_fail} \
+    } \
+    /* CAT_LOG_DEBUG(FS, "Start " #operation "() context=%p", context); */ \
+    int error = uv_fs_##operation(&CAT_EVENT_G(loop), &context->fs, ##__VA_ARGS__, cat_fs_callback); \
+    if (!cat_fs_do_result(context, error, #operation)) { \
+        {on_fail} \
+    } \
+    {on_done} \
+} while (0)
+
+#define CAT_FS_DO_RESULT(return_type, operation, ...) \
+        CAT_FS_DO_RESULT_EX({return -1;}, {return (return_type) context->fs.result;}, operation, __VA_ARGS__)
+
+static void cat_fs_callback(uv_fs_t *fs)
+{
+    cat_fs_context_t *context = cat_container_of(fs, cat_fs_context_t, fs);
+
+    if (context->coroutine != NULL) {
+        cat_coroutine_t *coroutine = context->coroutine;
+        context->coroutine = NULL;
+        cat_coroutine_schedule(coroutine, FS, "File-System");
+    }
+
+    uv_fs_req_cleanup(&context->fs);
+    cat_free(context);
+}
+
+#ifdef CAT_OS_WIN
+# define wrappath(_path, path) \
+char path##buf[(32767/*hard limit*/ + 4/* \\?\ */ + 1/* \0 */)*sizeof(wchar_t)] = {'\\', '\\', '?', '\\'}; \
+const char *path = NULL; \
+do { \
+    if (!_path) { \
+        path = NULL; \
+        break; \
+    } \
+    const size_t lenpath = cat_strnlen(_path, 32767); \
+    if ( \
+        !( /* not  \\?\-ed */ \
+            '\\' == _path[0] && \
+            '\\' == _path[1] && \
+            '?' == _path[2] && \
+            '\\' == _path[3] \
+        ) && \
+        lenpath >= MAX_PATH - 12 && /* longer than 260(MAX_PATH) - 12(8.3 filename) */ \
+        lenpath < sizeof(path##buf) - 4 - 1 /* shorter than hard limit*/ \
+    ) { \
+        /* fix it: prepend "\\?\" */ \
+        memcpy(&path##buf[4], _path, lenpath + 1/*\0*/); \
+        path = path##buf; \
+    } else { \
+        path = _path; \
+    } \
+} while (0)
+#else
+# define wrappath(_path, path) const char *path = _path
+#endif // CAT_OS_WIN
+
+
+// cat_work wrapped fs functions
+typedef struct cat_fs_work_ret_s {
+    cat_fs_error_t error;
+    union {
+        signed long long int num;
+        void *ptr;
+#ifdef CAT_OS_WIN
+        HANDLE handle;
+#endif // CAT_OS_WIN
+    } ret;
+} cat_fs_work_ret_t;
+
+// so nasty, but i have no clear way to do this
+cat_errno_t cat_translate_unix_error(int error);
+/*
+* set error code(GetLastError/errno), then return cat_errno_t
+*/
+static inline cat_errno_t cat_fs_set_error_code(cat_fs_error_t *e)
+{
+    switch (e->type) {
+#ifdef CAT_OS_WIN
+        case CAT_FS_ERROR_WIN32:
+            SetLastError(e->val.le);
+            return cat_translate_sys_error(e->val.le);
+        case CAT_FS_ERROR_ERRNO:
+            errno = e->val.error;
+            return cat_translate_unix_error(e->val.error);
+#else
+        case CAT_FS_ERROR_ERRNO:
+            errno = e->val.error;
+            return cat_translate_sys_error(e->val.error);
+#endif // CAT_OS_WIN
+        case CAT_FS_ERROR_CAT_ERRNO:
+            errno = cat_orig_errno(e->val.cat_errno);
+            return e->val.cat_errno;
+        case CAT_FS_ERROR_NONE:
+        case CAT_FS_ERROR_EOF:
+            CAT_NEVER_HERE("Not a real error");
+            break;
+        default:
+            CAT_NEVER_HERE("Strange error type");
+    }
+}
+
+#ifdef CAT_OS_WIN
+static LPCWSTR cat_fs_mbs2wcs(const char *mbs)
+{
+    DWORD bufsiz = MultiByteToWideChar(
+        CP_UTF8, // code page
+        0, // flags
+        mbs, // src
+        -1, // srclen: nul-terminated
+        NULL, // dest: no output
+        0 // destlen: nope
+    );
+    LPWSTR wcs = HeapAlloc(GetProcessHeap(), 0, bufsiz * sizeof(WCHAR));
+    if (NULL == wcs) {
+        return wcs;
+    }
+    DWORD r = MultiByteToWideChar(
+        CP_UTF8, // code page
+        0, // flags
+        mbs, // src
+        -1, // srclen: nul-terminated
+        wcs, // dest
+        bufsiz
+    );
+    wcs[bufsiz-1] = 0;
+    assert(r == bufsiz); // impossible
+    return (LPCWSTR) wcs;
+}
+
+static const char *cat_fs_wcs2mbs(LPCWSTR wcs)
+{
+    DWORD bufsiz = WideCharToMultiByte(
+        CP_UTF8, // code page
+        0, // flags
+        wcs, // src
+        -1, // srclen: nul-terminated
+        NULL, // dest: no output
+        0, // destlen: nope
+        NULL, // default char
+        FALSE // use default char
+    );
+    char *mbs = HeapAlloc(GetProcessHeap(), 0, bufsiz * sizeof(char));
+    if (NULL == mbs) {
+        return mbs;
+    }
+    DWORD r = WideCharToMultiByte(
+        CP_UTF8, // code page
+        0, // flags
+        wcs, // src
+        -1, // srclen: nul-terminated
+        mbs, // dest: no output
+        bufsiz, // destlen: nope
+        NULL, // default char
+        FALSE // use default char
+    );
+    mbs[bufsiz-1] = 0;
+    assert(r == bufsiz); // impossible
+    return (const char *) mbs;
+}
+
+static const char *cat_fs_win_strerror(DWORD le)
+{
+    LPVOID temp_msg;
+    // DWORD len_msg =
+    FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS, // flags
+        NULL, // source
+        le, // messageid: last error
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // language id
+        (LPWSTR)&temp_msg, // buffer
+        0, // bufsiz: 0
+        NULL // va_args
+    );
+    const char *msg = cat_fs_wcs2mbs((LPWSTR) temp_msg);
+    LocalFree(temp_msg);
+    return msg;
+}
+
+#endif // CAT_OS_WIN
+
+static inline const char *cat_fs_error_msg(cat_fs_error_t *e)
+{
+    if (e->msg) {
+        return e->msg;
+    }
+    switch (e->type) {
+        case CAT_FS_ERROR_NONE:
+        case CAT_FS_ERROR_EOF:
+            e->msg_free = CAT_FS_FREER_NONE;
+            e->msg = "";
+            break;
+#ifdef CAT_OS_WIN
+        case CAT_FS_ERROR_WIN32:
+            e->msg_free = CAT_FS_FREER_HEAP_FREE;
+            e->msg = cat_fs_win_strerror(e->val.le);
+            break;
+#endif // CAT_OS_WIN
+        case CAT_FS_ERROR_ERRNO:
+            e->msg_free = CAT_FS_FREER_NONE;
+            e->msg = strerror(e->val.error);
+            break;
+        case CAT_FS_ERROR_CAT_ERRNO:
+            e->msg_free = CAT_FS_FREER_NONE;
+            e->msg = strerror(cat_orig_errno(e->val.cat_errno));
+            break;
+        default:
+            CAT_NEVER_HERE("Strange error type");
+    }
+    return e->msg;
+}
+
+static inline void cat_fs_error_msg_free(cat_fs_error_t *e)
+{
+    assert(e->msg);
+    switch (e->msg_free) {
+        case CAT_FS_FREER_NONE:
+            e->msg = NULL;
+            return;
+#ifdef CAT_OS_WIN
+        case CAT_FS_FREER_HEAP_FREE:
+            HeapFree(GetProcessHeap(), 0, (LPVOID) e->msg);
+            return;
+#endif // CAT_OS_WIN
+        case CAT_FS_FREER_CAT_FREE:
+            cat_free((void*) e->msg);
+            return;
+        case CAT_FS_FREER_FREE:
+            free((void*) e->msg);
+            return;
+#ifdef CAT_OS_WIN
+        case CAT_FS_FREER_LOCAL_FREE:
+            // not implemented
+#endif // CAT_OS_WIN
+        default:
+            return;
+    }
+}
+
+// if error occured, this macro will set error
+#define cat_fs_work_check_error(error, fmt) do { \
+    cat_fs_error_t *_error = error; \
+    if (_error->type != CAT_FS_ERROR_NONE) { \
+        cat_fs_work_error(_error, "File-System " fmt " failed: %s"); \
+    } \
+} while (0)
+
+static CAT_COLD void cat_fs_work_error(cat_fs_error_t *error, const char *fmt)
+{
+    cat_errno_t cat_errno = cat_fs_set_error_code(error);
+    const char *msg = cat_fs_error_msg(error);
+
+    cat_update_last_error(cat_errno, fmt, msg);
+    cat_fs_error_msg_free(error);
+}
+
+// basic functions for filesystem IO
+// open, close, read, write
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+static CAT_BUFFER_STR_FREE char *cat_fs_open_flags_str(cat_fs_open_flags_t flags)
+{
+    cat_buffer_t buffer;
+    cat_buffer_create(&buffer, 32);
+#define CAT_FS_OPEN_FLAG_APPEND_GEN(name) \
+    if (flags & CAT_FS_OPEN_FLAG_##name) { \
+        cat_buffer_append_str(&buffer, #name "|"); \
+    }
+    CAT_FS_OPEN_FLAG_MAP(CAT_FS_OPEN_FLAG_APPEND_GEN)
+#undef CAT_FS_OPEN_FLAG_APPEND_GEN
+    if (buffer.length == 0) {
+        cat_buffer_append_str(&buffer, "NONE");
+    } else {
+        buffer.length--;
+    }
+    return cat_buffer_export_str(&buffer);
+}
+#endif
+
+static cat_always_inline cat_file_t cat_fs_open_impl(const char *_path, cat_fs_open_flags_t flags, int mode)
+{
+    wrappath(_path, path);
+
+    CAT_FS_DO_RESULT(cat_file_t, open, path, flags, mode);
+}
+
+CAT_API cat_file_t cat_fs_open(const char *path, cat_fs_open_flags_t flags, ...)
+{
+    cat_file_t fd;
+#ifdef CAT_ENABLE_DEBUG_LOG
+    char *flags_str = NULL;
+#endif
+    va_list args;
+    int mode = 0666;
+
+    if (flags & CAT_FS_OPEN_FLAG_CREAT) {
+        va_start(args, flags);
+        mode = va_arg(args, int);
+        va_end(args);
+    }
+
+    CAT_LOG_DEBUG_VA(FS, {
+        flags_str = cat_fs_open_flags_str(flags);
+        CAT_LOG_DEBUG_D(FS, "open(\"%s\", %s, %04o) = " CAT_LOG_UNFINISHED_STR,
+            path, flags_str, mode);
+    });
+    fd = cat_fs_open_impl(path, flags, mode);
+    CAT_LOG_DEBUG_VA(FS, {
+        CAT_LOG_DEBUG_D(FS, "open(\"%s\", %s, %04o) = " CAT_FS_FILE_FMT,
+            path, flags_str, mode, fd);
+        cat_free(flags_str);
+    });
+
+    return fd;
+}
+
+static cat_always_inline int cat_fs_close_impl(cat_file_t fd)
+{
+    CAT_FS_DO_RESULT(int, close, fd);
+}
+
+CAT_API int cat_fs_close(cat_file_t fd)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "close(" CAT_FS_FILE_FMT ") = " CAT_LOG_UNFINISHED_STR, fd);
+    error = cat_fs_close_impl(fd);
+    CAT_LOG_DEBUG(FS, "close(" CAT_FS_FILE_FMT ") = " CAT_LOG_INT_RET_FMT, fd, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+
+#ifndef CAT_OS_WIN
+typedef size_t cat_fs_read_size_t;
+typedef size_t cat_fs_write_size_t;
+#else
+typedef unsigned int cat_fs_read_size_t;
+typedef unsigned int cat_fs_write_size_t;
+#endif // CAT_OS_WIN
+
+typedef struct cat_fs_read_data_s {
+    cat_fs_work_ret_t ret;
+    int fd;
+    void *buf;
+    cat_fs_read_size_t size;
+} cat_fs_read_data_t;
+
+static void cat_fs_read_cb(cat_data_t *ptr)
+{
+    cat_fs_read_data_t *data = (cat_fs_read_data_t *) ptr;
+    data->ret.ret.num = read(data->fd, data->buf, data->size);
+    if (0 > data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline ssize_t cat_fs_read_impl(cat_file_t fd, void *buf, size_t size)
+{
+    cat_fs_read_data_t *data = (cat_fs_read_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs read failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->fd = fd;
+    data->buf = buf;
+    data->size = (cat_fs_read_size_t) size;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_read_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "read");
+    return data->ret.ret.num;
+}
+
+CAT_API ssize_t cat_fs_read(cat_file_t fd, void *buffer, size_t size)
+{
+    ssize_t n;
+
+    CAT_LOG_DEBUG(FS, "read(" CAT_FS_FILE_FMT ", " CAT_LOG_READ_BUFFER_FMT ", %zu) = " CAT_LOG_UNFINISHED_STR,
+        fd, CAT_LOG_READ_BUFFER_C(buffer), size);
+
+    n = cat_fs_read_impl(fd, buffer, size);
+
+    CAT_LOG_DEBUG_VA(FS, {
+        char *s;
+        CAT_LOG_DEBUG_D(FS, "read(" CAT_FS_FILE_FMT ", %s, %zu) = " CAT_LOG_SSIZE_RET_FMT,
+            fd, cat_log_str_quote(buffer, n < 0 ? 0 : n, &s), size, CAT_LOG_SSIZE_RET_C(n));
+        cat_free(s);
+    });
+
+    return n;
+}
+
+typedef struct cat_fs_write_data_s {
+    cat_fs_work_ret_t ret;
+    int fd;
+    const void* buf;
+    cat_fs_write_size_t length;
+} cat_fs_write_data_t;
+
+static void cat_fs_write_cb(cat_data_t *ptr)
+{
+    cat_fs_write_data_t *data = (cat_fs_write_data_t *) ptr;
+    data->ret.ret.num = (ssize_t) write(data->fd, data->buf, data->length);
+    if (0 > data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline ssize_t cat_fs_write_impl(cat_file_t fd, const void *buf, size_t length)
+{
+    cat_fs_write_data_t *data = (cat_fs_write_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs write failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->fd = fd;
+    data->buf = buf;
+    data->length = (cat_fs_write_size_t) length;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_write_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "write");
+    return (ssize_t) data->ret.ret.num;
+}
+
+CAT_API ssize_t cat_fs_write(cat_file_t fd, const void *buffer, size_t length)
+{
+    ssize_t n;
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+    char *buffer_quoted = NULL;
+#endif
+    CAT_LOG_DEBUG(FS, "write(" CAT_FS_FILE_FMT ", %s, %zu) = " CAT_LOG_UNFINISHED_STR,
+        fd, cat_log_str_quote(buffer, length, &buffer_quoted), length);
+
+    n = cat_fs_write_impl(fd, buffer, length);
+
+    CAT_LOG_DEBUG_VA(FS, {
+        CAT_LOG_DEBUG_D(FS, "write(" CAT_FS_FILE_FMT ", %s, %zu) = " CAT_LOG_SSIZE_RET_FMT,
+            fd, buffer_quoted, length, CAT_LOG_SSIZE_RET_C(n));
+        cat_free(buffer_quoted);
+    });
+
+    return n;
+}
+
+static cat_always_inline ssize_t cat_fs_pread_impl(cat_file_t fd, void *buffer, size_t size, off_t offset)
+{
+    uv_buf_t buf = uv_buf_init((char *) buffer, (unsigned int) size);
+
+    CAT_FS_DO_RESULT(ssize_t, read, fd, &buf, 1, offset);
+}
+
+CAT_API ssize_t cat_fs_pread(cat_file_t fd, void *buffer, size_t size, off_t offset)
+{
+    ssize_t n;
+
+    CAT_LOG_DEBUG(FS, "pread(" CAT_FS_FILE_FMT ", " CAT_LOG_READ_BUFFER_FMT ", %zu, %jd) = " CAT_LOG_UNFINISHED_STR,
+        fd, CAT_LOG_READ_BUFFER_C(buffer), size, (intmax_t) offset);
+
+    n = cat_fs_pread_impl(fd, buffer, size, offset);
+
+    CAT_LOG_DEBUG_VA(FS, {
+        char *s;
+        CAT_LOG_DEBUG_D(FS, "pread(" CAT_FS_FILE_FMT ", %s, %zu, %jd) = " CAT_LOG_SSIZE_RET_FMT,
+            fd, cat_log_str_quote(buffer, n < 0 ? 0 : n, &s), size, (intmax_t) offset, CAT_LOG_SSIZE_RET_C(n));
+        cat_free(s);
+    });
+
+    return n;
+}
+
+static cat_always_inline ssize_t cat_fs_pwrite_impl(cat_file_t fd, const void *buffer, size_t length, off_t offset)
+{
+    uv_buf_t buf = uv_buf_init((char *) buffer, (unsigned int) length);
+
+    CAT_FS_DO_RESULT(ssize_t, write, fd, &buf, 1, offset);
+}
+
+CAT_API ssize_t cat_fs_pwrite(cat_file_t fd, const void *buffer, size_t length, off_t offset)
+{
+    ssize_t n;
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+    char *buffer_quoted = NULL;
+#endif
+    CAT_LOG_DEBUG(FS, "pwrite(" CAT_FS_FILE_FMT ", %s, %zu, %jd) = " CAT_LOG_UNFINISHED_STR,
+        fd, cat_log_str_quote(buffer, length, &buffer_quoted), length, (intmax_t) offset);
+
+    n = cat_fs_pwrite_impl(fd, buffer, length, offset);
+
+    CAT_LOG_DEBUG_VA(FS, {
+        CAT_LOG_DEBUG_D(FS, "pwrite(" CAT_FS_FILE_FMT ", %s, %zu, %jd) = " CAT_LOG_SSIZE_RET_FMT,
+            fd, buffer_quoted, length, (intmax_t) offset, CAT_LOG_SSIZE_RET_C(n));
+        cat_free(buffer_quoted);
+    });
+
+    return n;
+}
+
+typedef struct cat_fs_lseek_data_s {
+    cat_fs_work_ret_t ret;
+    int fd;
+    off_t offset;
+    int whence;
+} cat_fs_lseek_data_t;
+
+static void cat_fs_lseek_cb(cat_data_t *ptr)
+{
+    cat_fs_lseek_data_t *data = (cat_fs_lseek_data_t *) ptr;
+    data->ret.ret.num = (ssize_t) lseek(data->fd, data->offset, data->whence);
+    if (0 > data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline off_t cat_fs_lseek_impl(cat_file_t fd, off_t offset, int whence)
+{
+    cat_fs_lseek_data_t *data = (cat_fs_lseek_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs lseek failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->fd = fd;
+    data->offset = offset;
+    data->whence = whence;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_lseek_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "lseek");
+    return (off_t) data->ret.ret.num;
+}
+
+CAT_API off_t cat_fs_lseek(cat_file_t fd, off_t offset, int whence)
+{
+    off_t n;
+    CAT_LOG_DEBUG(FS, "lseek(" CAT_FS_FILE_FMT ", %jd, %d) = " CAT_LOG_UNFINISHED_STR, fd, (intmax_t) offset, whence);
+    n = cat_fs_lseek_impl(fd, offset, whence);
+    CAT_LOG_DEBUG(FS, "lseek(" CAT_FS_FILE_FMT ", %jd, %d) = " CAT_LOG_OFF_RET_FMT, fd, (intmax_t) offset, whence, CAT_LOG_OFF_RET_C(n));
+    return n;
+}
+
+static cat_always_inline int cat_fs_fsync_impl(cat_file_t fd)
+{
+    CAT_FS_DO_RESULT(int, fsync, fd);
+}
+
+CAT_API int cat_fs_fsync(cat_file_t fd)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "fsync(" CAT_FS_FILE_FMT ") = " CAT_LOG_UNFINISHED_STR, fd);
+    error = cat_fs_fsync_impl(fd);
+    CAT_LOG_DEBUG(FS, "fsync(" CAT_FS_FILE_FMT ") = " CAT_LOG_INT_RET_FMT, fd, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_fdatasync_impl(cat_file_t fd)
+{
+    CAT_FS_DO_RESULT(int, fdatasync, fd);
+}
+
+CAT_API int cat_fs_fdatasync(cat_file_t fd)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "fdatasync(" CAT_FS_FILE_FMT ") = " CAT_LOG_UNFINISHED_STR, fd);
+    error = cat_fs_fdatasync_impl(fd);
+    CAT_LOG_DEBUG(FS, "fdatasync(" CAT_FS_FILE_FMT ") = " CAT_LOG_INT_RET_FMT, fd, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_ftruncate_impl(cat_file_t fd, int64_t offset)
+{
+    CAT_FS_DO_RESULT(int, ftruncate, fd, offset);
+}
+
+CAT_API int cat_fs_ftruncate(cat_file_t fd, int64_t offset)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "ftruncate(" CAT_FS_FILE_FMT ", %jd) = " CAT_LOG_UNFINISHED_STR, fd, (intmax_t) offset);
+    error = cat_fs_ftruncate_impl(fd, offset);
+    CAT_LOG_DEBUG(FS, "ftruncate(" CAT_FS_FILE_FMT ", %jd) = " CAT_LOG_INT_RET_FMT, fd, (intmax_t) offset, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+// basic dir operations
+// opendir, readdir, closedir, scandir
+#ifndef CAT_OS_WIN
+/*
+* cat_fs_readdirs: like readdir(3), but with multi entries
+* Note: you should do free(dir->dirents[x].name), free(dir->dirents[x]) and free(dir->dirents)
+*/
+/*
+static int cat_fs_readdirs(cat_dir_t *dir, uv_dirent_t *dirents, size_t nentries)
+{
+    ((uv_dir_t *) dir)->dirents = dirents;
+    ((uv_dir_t *) dir)->nentries = nentries;
+    CAT_FS_DO_RESULT_EX({return -1;}, {
+        // we donot duplicate names, that's hacky
+        // better duplicate it, then uv__free original, then return our duplication
+        // however we donot have uv__free
+
+        // clean up dir struct to avoid uv's freeing names
+        ((uv_dir_t *) dir)->dirents = NULL;
+        ((uv_dir_t *) dir)->nentries = 0;
+        int ret = (int) context->fs.result;
+        context->fs.result = 0;
+        return ret;
+    }, readdir, dir);
+}
+*/
+#endif // CAT_OS_WIN
+
+static uv_fs_t *cat_fs_uv_scandir(const char *path, int flags)
+{
+    CAT_FS_DO_RESULT_EX({return NULL;}, {
+        return &context->fs;
+    }, scandir, path, flags/* no documents/source code coments refer to this, what is this ?*/);
+}
+
+/*
+* cat_fs_scandir: like scandir(3), but with cat_dirent_t
+* Note: you should do free(namelist[x].name), free(namelist[x]) and free(namelist)
+*/
+static cat_always_inline int cat_fs_scandir_impl(const char *path, cat_dirent_t **namelist, cat_dirent_filter_t filter, cat_dirent_compar_t compar)
+{
+    uv_fs_t *req = NULL;
+    if (!(req = cat_fs_uv_scandir(path, 0))) {
+        // failed scandir
+        return -1;
+    }
+
+    cat_dirent_t dirent, *tmp = NULL;
+    int cnt = 0, len = 0;
+
+    while (uv_fs_scandir_next(req, (uv_dirent_t *) &dirent) == 0) {
+        if (filter && !filter(&dirent)) {
+            continue;
+        }
+        if (cnt >= len) {
+            len = 2*len+1;
+            void *_tmp = realloc(tmp, len * sizeof(*tmp));
+            if (!_tmp) {
+                cat_update_last_error(CAT_ENOMEM, "Cannot allocate memory");
+                errno = ENOMEM;
+                for (cnt--; cnt >= 0; cnt--) {
+                    free((void*) tmp[cnt].name);
+                }
+                free(tmp);
+                return -1;
+            }
+            tmp = _tmp;
+        }
+        tmp[cnt].name = cat_sys_strdup(dirent.name);
+        // printf("%s: %p\n", tmp[cnt].name, tmp[cnt].name);
+        tmp[cnt++].type = dirent.type;
+    }
+
+    if (compar) {
+#ifdef _MSC_VER
+# pragma warning(disable:4191) /* FIXME: workaround for MSVC bug */
+#endif
+        qsort(tmp, cnt, sizeof(*tmp), (int (*)(const void *, const void *)) compar);
+#ifdef _MSC_VER
+# pragma warning(default:4191) /* FIXME: workaround for MSVC bug */
+#endif
+    }
+    *namelist = tmp;
+    return cnt;
+}
+
+CAT_API int cat_fs_scandir(const char *path, cat_dirent_t **namelist, cat_dirent_filter_t filter, cat_dirent_compar_t compar)
+{
+    int cnt;
+    // TODO: show namelist here
+    CAT_LOG_DEBUG(FS, "scandir(\"%s\", " CAT_LOG_READ_BUFFER_FMT ", %p, %p) = " CAT_LOG_UNFINISHED_STR, path, CAT_LOG_READ_BUFFER_C(namelist), filter, compar);
+    cnt = cat_fs_scandir_impl(path, namelist, filter, compar);
+    CAT_LOG_DEBUG(FS, "scandir(\"%s\", %p, %p, %p) = " CAT_LOG_INT_RET_FMT, path, namelist, filter, compar, CAT_LOG_INT_RET_C(cnt));
+    return cnt;
+}
+
+// directory/file operations
+// mkdir, rmdir, rename, unlink
+
+static cat_always_inline int cat_fs_mkdir_impl(const char *_path, int mode)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, mkdir, path, mode);
+}
+
+CAT_API int cat_fs_mkdir(const char *path, int mode)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "mkdir(\"%s\", %04o) = " CAT_LOG_UNFINISHED_STR, path, mode);
+    error = cat_fs_mkdir_impl(path, mode);
+    CAT_LOG_DEBUG(FS, "mkdir(\"%s\", %04o) = " CAT_LOG_INT_RET_FMT, path, mode, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_rmdir_impl(const char *_path)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, rmdir, path);
+}
+
+CAT_API int cat_fs_rmdir(const char *path)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "rmdir(\"%s\") = " CAT_LOG_UNFINISHED_STR, path);
+    error = cat_fs_rmdir_impl(path);
+    CAT_LOG_DEBUG(FS, "rmdir(\"%s\") = " CAT_LOG_INT_RET_FMT, path, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_rename_impl(const char *_path, const char *_new_path)
+{
+    wrappath(_path, path);
+    wrappath(_new_path, new_path);
+    CAT_FS_DO_RESULT(int, rename, path, new_path);
+}
+
+CAT_API int cat_fs_rename(const char *path, const char *new_path)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "rename(\"%s\", \"%s\") = " CAT_LOG_UNFINISHED_STR, path, new_path);
+    error = cat_fs_rename_impl(path, new_path);
+    CAT_LOG_DEBUG(FS, "rename(\"%s\", \"%s\") = " CAT_LOG_INT_RET_FMT, path, new_path, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_unlink_impl(const char *_path)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, unlink, path);
+}
+
+CAT_API int cat_fs_unlink(const char *path)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "unlink(\"%s\") = " CAT_LOG_UNFINISHED_STR, path);
+    error = cat_fs_unlink_impl(path);
+    CAT_LOG_DEBUG(FS, "unlink(\"%s\") = " CAT_LOG_INT_RET_FMT, path, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+// file info utils
+// access, stat(s), utime(s)
+
+static cat_always_inline int cat_fs_access_impl(const char *_path, int mode)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, access, path, mode);
+}
+
+CAT_API int cat_fs_access(const char *path, int mode)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "access(\"%s\", %04o) = " CAT_LOG_UNFINISHED_STR, path, mode);
+    error = cat_fs_access_impl(path, mode);
+    CAT_LOG_DEBUG(FS, "access(\"%s\", %04o) = " CAT_LOG_INT_RET_FMT, path, mode, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+#define CAT_FS_DO_STAT(name, target) \
+    CAT_FS_DO_RESULT_EX({return -1;}, {memcpy(statbuf, &context->fs.statbuf, sizeof(uv_stat_t)); return 0;}, name, target)
+
+static cat_always_inline int cat_fs_stat_impl(const char *_path, cat_stat_t *statbuf)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_STAT(stat, path);
+}
+
+CAT_API int cat_fs_stat(const char *path, cat_stat_t *statbuf)
+{
+    int error;
+    // TODO: show stat here
+    CAT_LOG_DEBUG(FS, "stat(\"%s\", " CAT_LOG_READ_BUFFER_FMT ") = " CAT_LOG_UNFINISHED_STR, path, CAT_LOG_READ_BUFFER_C(statbuf));
+    error = cat_fs_stat_impl(path, statbuf);
+    CAT_LOG_DEBUG(FS, "stat(\"%s\", %p) = " CAT_LOG_INT_RET_FMT, path, statbuf, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_lstat_impl(const char *_path, cat_stat_t *statbuf)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_STAT(lstat, path);
+}
+
+CAT_API int cat_fs_lstat(const char *path, cat_stat_t *statbuf)
+{
+    int error;
+    // TODO: show stat here
+    CAT_LOG_DEBUG(FS, "lstat(\"%s\", " CAT_LOG_READ_BUFFER_FMT ") = " CAT_LOG_UNFINISHED_STR, path, CAT_LOG_READ_BUFFER_C(statbuf));
+    error = cat_fs_lstat_impl(path, statbuf);
+    CAT_LOG_DEBUG(FS, "lstat(\"%s\", %p) = " CAT_LOG_INT_RET_FMT, path, statbuf, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_fstat_impl(cat_file_t fd, cat_stat_t *statbuf)
+{
+    CAT_FS_DO_STAT(fstat, fd);
+}
+
+CAT_API int cat_fs_fstat(cat_file_t fd, cat_stat_t *statbuf)
+{
+    int error;
+    // TODO: show stat here
+    CAT_LOG_DEBUG(FS, "fstat(" CAT_FS_FILE_FMT ", " CAT_LOG_READ_BUFFER_FMT ") = " CAT_LOG_UNFINISHED_STR, fd, CAT_LOG_READ_BUFFER_C(statbuf));
+    error = cat_fs_fstat_impl(fd, statbuf);
+    CAT_LOG_DEBUG(FS, "fstat(" CAT_FS_FILE_FMT ", %p) = " CAT_LOG_INT_RET_FMT, fd, statbuf, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_utime_impl(const char *_path, double atime, double mtime)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, utime, path, atime, mtime);
+}
+
+CAT_API int cat_fs_utime(const char *path, double atime, double mtime)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "utime(\"%s\", %f, %f) = " CAT_LOG_UNFINISHED_STR, path, atime, mtime);
+    error = cat_fs_utime_impl(path, atime, mtime);
+    CAT_LOG_DEBUG(FS, "utime(\"%s\", %f, %f) = " CAT_LOG_INT_RET_FMT, path, atime, mtime, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_lutime_impl(const char *_path, double atime, double mtime)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, lutime, path, atime, mtime);
+}
+
+CAT_API int cat_fs_lutime(const char *path, double atime, double mtime)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "lutime(\"%s\", %f, %f) = " CAT_LOG_UNFINISHED_STR, path, atime, mtime);
+    error = cat_fs_lutime_impl(path, atime, mtime);
+    CAT_LOG_DEBUG(FS, "lutime(\"%s\", %f, %f) = " CAT_LOG_INT_RET_FMT, path, atime, mtime, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_futime_impl(cat_file_t fd, double atime, double mtime)
+{
+    CAT_FS_DO_RESULT(int, futime, fd, atime, mtime);
+}
+
+CAT_API int cat_fs_futime(cat_file_t fd, double atime, double mtime)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "futime(" CAT_FS_FILE_FMT ", %f, %f) = " CAT_LOG_UNFINISHED_STR, fd, atime, mtime);
+    error = cat_fs_futime_impl(fd, atime, mtime);
+    CAT_LOG_DEBUG(FS, "futime(" CAT_FS_FILE_FMT ", %f, %f) = " CAT_LOG_INT_RET_FMT, fd, atime, mtime, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+// hard link and symbol link
+// link, symlink, readlink, realpath
+
+static cat_always_inline int cat_fs_link_impl(const char *_path, const char *_new_path)
+{
+    wrappath(_path, path);
+    wrappath(_new_path, new_path);
+    CAT_FS_DO_RESULT(int, link, path, new_path);
+}
+
+CAT_API int cat_fs_link(const char *path, const char *new_path)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "link(\"%s\", %s) = " CAT_LOG_UNFINISHED_STR, path, new_path);
+    error = cat_fs_link_impl(path, new_path);
+    CAT_LOG_DEBUG(FS, "link(\"%s\", %s) = " CAT_LOG_INT_RET_FMT, path, new_path, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+static CAT_BUFFER_STR_FREE char *cat_fs_symlink_flags_str(cat_fs_symlink_flags_t flags)
+{
+    cat_buffer_t buffer;
+    cat_buffer_create(&buffer, 32);
+#define CAT_FS_SYMLINK_FLAG_APPEND_GEN(name) \
+    if (flags & CAT_FS_SYMLINK_FLAG_##name) { \
+        cat_buffer_append_str(&buffer, #name "|"); \
+    }
+    CAT_FS_SYMLINK_FLAG_MAP(CAT_FS_SYMLINK_FLAG_APPEND_GEN)
+#undef CAT_FS_SYMLINK_FLAG_APPEND_GEN
+    if (buffer.length == 0) {
+        cat_buffer_append_str(&buffer, "NONE");
+    } else {
+        buffer.length--;
+    }
+    return cat_buffer_export_str(&buffer);
+}
+#endif
+
+static cat_always_inline int cat_fs_symlink_impl(const char *_path, const char *_new_path, cat_fs_symlink_flags_t flags)
+{
+    wrappath(_path, path);
+    wrappath(_new_path, new_path);
+    CAT_FS_DO_RESULT(int, symlink, path, new_path, flags);
+}
+
+CAT_API int cat_fs_symlink(const char *path, const char *new_path, cat_fs_symlink_flags_t flags)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    char *flags_str = NULL;
+#endif
+    int error;
+    CAT_LOG_DEBUG_VA(FS, {
+        flags_str = cat_fs_symlink_flags_str(flags);
+        CAT_LOG_DEBUG_D(FS, "symlink(\"%s\", \"%s\", %s) = " CAT_LOG_UNFINISHED_STR, path, new_path, flags_str);
+    });
+    error = cat_fs_symlink_impl(path, new_path, flags);
+    CAT_LOG_DEBUG_VA(FS, {
+        CAT_LOG_DEBUG_D(FS, "symlink(\"%s\", \"%s\", %s) = " CAT_LOG_INT_RET_FMT, path, new_path, flags_str, CAT_LOG_INT_RET_C(error));
+        cat_free(flags_str);
+    });
+    return error;
+}
+
+#ifdef CAT_OS_WIN
+# define PATH_MAX 32768
+#endif // CAT_OS_WIN
+
+static cat_always_inline int cat_fs_readlink_impl(const char *_path, char *buffer, size_t size)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT_EX({return -1;}, {
+        size_t ret = cat_strnlen(context->fs.ptr, PATH_MAX);
+        if (ret > size) {
+            // will truncate
+            ret = size;
+        }
+        strncpy(buffer, context->fs.ptr, size);
+        return (int) ret;
+    }, readlink, path);
+}
+
+CAT_API int cat_fs_readlink(const char *path, char *buffer, size_t size)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "readlink(\"%s\", " CAT_LOG_READ_BUFFER_FMT ", %zu) = " CAT_LOG_UNFINISHED_STR, path, CAT_LOG_READ_BUFFER_C(buffer), size);
+    error = cat_fs_readlink_impl(path, buffer, size);
+    CAT_LOG_DEBUG(FS, "readlink(\"%s\", %p, %zu) = " CAT_LOG_INT_RET_FMT, path, buffer, size, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline char *cat_fs_realpath_impl(const char *_path, char *buf)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT_EX({return NULL;}, {
+        if (NULL == buf) {
+            return cat_sys_strdup(context->fs.ptr);
+        }
+        strcpy(buf, context->fs.ptr);
+        return buf;
+    }, realpath, path);
+}
+
+CAT_API char *cat_fs_realpath(const char *path, char *buffer)
+{
+    char *realpath;
+    CAT_LOG_DEBUG(FS, "realpath(\"%s\", " CAT_LOG_READ_BUFFER_FMT ") = " CAT_LOG_UNFINISHED_STR, path, CAT_LOG_READ_BUFFER_C(buffer));
+    realpath = cat_fs_realpath_impl(path, buffer);
+    CAT_LOG_DEBUG(FS, "realpath(\"%s\", %p) = " CAT_LOG_READ_BUFFER_FMT, path, buffer, CAT_LOG_READ_BUFFER_C(realpath));
+    return realpath;
+}
+
+#ifdef CAT_OS_WIN
+# undef PATH_MAX
+#endif // CAT_OS_WIN
+
+// permissions
+// chmod(s), chown(s)
+
+static cat_always_inline int cat_fs_chmod_impl(const char *_path, int mode)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, chmod, path, mode);
+}
+
+CAT_API int cat_fs_chmod(const char *path, int mode)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "chmod(\"%s\", %04o) = " CAT_LOG_UNFINISHED_STR, path, mode);
+    error = cat_fs_chmod_impl(path, mode);
+    CAT_LOG_DEBUG(FS, "chmod(\"%s\", %04o) = " CAT_LOG_INT_RET_FMT, path, mode, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_fchmod_impl(cat_file_t fd, int mode)
+{
+    CAT_FS_DO_RESULT(int, fchmod, fd, mode);
+}
+
+CAT_API int cat_fs_fchmod(cat_file_t fd, int mode)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "fchmod(" CAT_FS_FILE_FMT ", %04o) = " CAT_LOG_UNFINISHED_STR, fd, mode);
+    error = cat_fs_fchmod_impl(fd, mode);
+    CAT_LOG_DEBUG(FS, "fchmod(" CAT_FS_FILE_FMT ", %04o) = " CAT_LOG_INT_RET_FMT, fd, mode, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_chown_impl(const char *_path, cat_uid_t uid, cat_gid_t gid)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, chown, path, uid, gid);
+}
+
+CAT_API int cat_fs_chown(const char *path, cat_uid_t uid, cat_gid_t gid)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "chown(\"%s\", %d, %d) = " CAT_LOG_UNFINISHED_STR, path, uid, gid);
+    error = cat_fs_chown_impl(path, uid, gid);
+    CAT_LOG_DEBUG(FS, "chown(\"%s\", %d, %d) = " CAT_LOG_INT_RET_FMT, path, uid, gid, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_lchown_impl(const char *_path, cat_uid_t uid, cat_gid_t gid)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT(int, lchown, path, uid, gid);
+}
+
+CAT_API int cat_fs_lchown(const char *path, cat_uid_t uid, cat_gid_t gid)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "lchown(\"%s\", %d, %d) = " CAT_LOG_UNFINISHED_STR, path, uid, gid);
+    error = cat_fs_lchown_impl(path, uid, gid);
+    CAT_LOG_DEBUG(FS, "lchown(\"%s\", %d, %d) = " CAT_LOG_INT_RET_FMT, path, uid, gid, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline int cat_fs_fchown_impl(cat_file_t fd, cat_uid_t uid, cat_gid_t gid)
+{
+    CAT_FS_DO_RESULT(int, fchown, fd, uid, gid);
+}
+
+CAT_API int cat_fs_fchown(cat_file_t fd, cat_uid_t uid, cat_gid_t gid)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "fchown(" CAT_FS_FILE_FMT ", %d, %d) = " CAT_LOG_UNFINISHED_STR, fd, uid, gid);
+    error = cat_fs_fchown_impl(fd, uid, gid);
+    CAT_LOG_DEBUG(FS, "fchown(" CAT_FS_FILE_FMT ", %d, %d) = " CAT_LOG_INT_RET_FMT, fd, uid, gid, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+// miscellaneous
+// copyfile
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+static CAT_BUFFER_STR_FREE char *cat_fs_copyfile_flags_str(cat_fs_copyfile_flags_t flags)
+{
+    cat_buffer_t buffer;
+    cat_buffer_create(&buffer, 32);
+#define CAT_FS_COPYFILE_FLAG_APPEND_GEN(name) \
+    if (flags & CAT_FS_COPYFILE_FLAG_##name) { \
+        cat_buffer_append_str(&buffer, #name "|"); \
+    }
+    CAT_FS_COPYFILE_FLAG_MAP(CAT_FS_COPYFILE_FLAG_APPEND_GEN);
+#undef CAT_FS_COPYFILE_FLAG_APPEND_GEN
+    if (buffer.length == 0) {
+        cat_buffer_append_str(&buffer, "NONE");
+    } else {
+        buffer.length--;
+    }
+    return cat_buffer_export_str(&buffer);
+}
+#endif
+
+static cat_always_inline int cat_fs_copyfile_impl(const char *_path, const char *_new_path, cat_fs_copyfile_flags_t flags)
+{
+    wrappath(_path, path);
+    wrappath(_new_path, new_path);
+    CAT_FS_DO_RESULT(int, copyfile, path, new_path, flags);
+}
+
+CAT_API int cat_fs_copyfile(const char *path, const char *new_path, cat_fs_copyfile_flags_t flags)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    char *flags_str = NULL;
+#endif
+    int error;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        flags_str = cat_fs_copyfile_flags_str(flags);
+        CAT_LOG_DEBUG_D(FS, "copyfile(\"%s\", \"%s\", %s) = " CAT_LOG_UNFINISHED_STR, path, new_path, flags_str);
+    });
+
+    error = cat_fs_copyfile_impl(path, new_path, flags);
+
+    CAT_LOG_DEBUG_VA(FS, {
+        CAT_LOG_DEBUG_D(FS, "copyfile(\"%s\", \"%s\", %s) = " CAT_LOG_INT_RET_FMT, path, new_path, flags_str, CAT_LOG_INT_RET_C(error));
+        cat_free(flags_str);
+    });
+
+    return error;
+}
+
+static cat_always_inline int cat_fs_sendfile_impl(cat_file_t out_fd, cat_file_t in_fd, int64_t in_offset, size_t length)
+{
+    CAT_FS_DO_RESULT(int, sendfile, out_fd, in_fd, in_offset, length);
+}
+
+CAT_API int cat_fs_sendfile(cat_file_t out_fd, cat_file_t in_fd, int64_t in_offset, size_t length)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "sendfile(" CAT_FS_FILE_FMT ", " CAT_FS_FILE_FMT ", %jd, %zu) = " CAT_LOG_UNFINISHED_STR, out_fd, in_fd, (intmax_t) in_offset, length);
+    error = cat_fs_sendfile_impl(out_fd, in_fd, in_offset, length);
+    CAT_LOG_DEBUG(FS, "sendfile(" CAT_FS_FILE_FMT ", " CAT_FS_FILE_FMT ", %jd, %zu) = " CAT_LOG_INT_RET_FMT, out_fd, in_fd, (intmax_t) in_offset, length, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+static cat_always_inline const char *cat_fs_mkdtemp_impl(const char *_tpl)
+{
+    wrappath(_tpl, tpl);
+    CAT_FS_DO_RESULT_EX({return NULL;}, {
+        if (0 != context->fs.result) {
+            return NULL;
+        }
+        return context->fs.path;
+    }, mkdtemp, tpl);
+}
+
+CAT_API const char *cat_fs_mkdtemp(const char *tpl)
+{
+    const char *path;
+    CAT_LOG_DEBUG(FS, "mkdtemp(\"%s\") = " CAT_LOG_UNFINISHED_STR, tpl);
+    path = cat_fs_mkdtemp_impl(tpl);
+    CAT_LOG_DEBUG(FS, "mkdtemp(\"%s\") = \"%s\"", tpl, path);
+    return path;
+}
+
+static cat_always_inline int cat_fs_mkstemp_impl(const char *_tpl)
+{
+    wrappath(_tpl, tpl);
+    CAT_FS_DO_RESULT_EX({return -1;}, {
+        return (int) context->fs.result;
+    }, mkstemp, tpl);
+}
+
+CAT_API int cat_fs_mkstemp(const char *tpl)
+{
+    int fd;
+    CAT_LOG_DEBUG(FS, "mkstemp(\"%s\") = " CAT_LOG_UNFINISHED_STR, tpl);
+    fd = cat_fs_mkstemp_impl(tpl);
+    CAT_LOG_DEBUG(FS, "mkstemp(\"%s\") = " CAT_LOG_INT_RET_FMT, tpl, CAT_LOG_INT_RET_C(fd));
+    return fd;
+}
+
+static cat_always_inline int cat_fs_statfs_impl(const char *_path, cat_statfs_t *buf)
+{
+    wrappath(_path, path);
+    CAT_FS_DO_RESULT_EX({return -1;}, {
+        memcpy(buf, context->fs.ptr, sizeof(*buf));
+        return 0;
+    }, statfs, path);
+}
+
+CAT_API int cat_fs_statfs(const char *path, cat_statfs_t *buf)
+{
+    int error;
+    // TODO: show statfs here
+    CAT_LOG_DEBUG(FS, "statfs(\"%s\", " CAT_LOG_READ_BUFFER_FMT ") = " CAT_LOG_UNFINISHED_STR, path, CAT_LOG_READ_BUFFER_C(buf));
+    error = cat_fs_statfs_impl(path, buf);
+    CAT_LOG_DEBUG(FS, "statfs(\"%s\", %p) = " CAT_LOG_INT_RET_FMT, path, buf, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+// TODO: fopen wrapper
+// CAT_API FILE *cat_fs_fopen(const char *path, const char *mode) { }
+
+typedef struct cat_fs_fclose_data_s {
+    cat_fs_work_ret_t ret;
+    FILE* stream;
+} cat_fs_fclose_data_t;
+
+static void cat_fs_fclose_cb(cat_data_t *ptr)
+{
+    cat_fs_fclose_data_t *data = (cat_fs_fclose_data_t *) ptr;
+    data->ret.ret.num = fclose(data->stream);
+    if (0 != data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline int cat_fs_fclose_impl(FILE *stream)
+{
+    if (stream == NULL) {
+        cat_fs_error_t error = { 0 };
+        error.type = CAT_FS_ERROR_ERRNO;
+        error.val.error = EINVAL;
+        cat_fs_work_error(&error, "File-System fclose failed: %s");
+        return -1;
+    }
+    cat_fs_fclose_data_t *data = (cat_fs_fclose_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs fclose failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->stream = stream;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_fclose_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "fclose");
+    return (int) data->ret.ret.num;
+}
+
+CAT_API int cat_fs_fclose(FILE *stream)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    int fd = -1;
+#endif
+    int error;
+    CAT_LOG_DEBUG_VA(FS, if (stream != NULL) { /* FIXME(dixyes): workaround? this is an undefined behavior. */
+        fd = fileno(stream);
+        CAT_LOG_DEBUG_D(FS, "fclose(%d) = " CAT_LOG_UNFINISHED_STR, fd);
+    });
+    error = cat_fs_fclose_impl(stream);
+    CAT_LOG_DEBUG_VA(FS, {
+        if (stream != NULL) {
+            CAT_LOG_DEBUG_D(FS, "fclose(%d) = " CAT_LOG_INT_RET_FMT, fd, CAT_LOG_INT_RET_C(error));
+        } else {
+            CAT_LOG_DEBUG_D(FS, "fclose(NULL) = " CAT_LOG_INT_RET_FMT, CAT_LOG_INT_RET_C(error));
+        }
+    });
+    return error;
+}
+
+typedef struct cat_fs_fread_data_s {
+    cat_fs_work_ret_t ret;
+    void *ptr;
+    size_t size;
+    size_t nmemb;
+    FILE *stream;
+} cat_fs_fread_data_t;
+
+static void cat_fs_fread_cb(cat_data_t *ptr)
+{
+    cat_fs_fread_data_t *data = (cat_fs_fread_data_t *) ptr;
+    errno = 0;
+    data->ret.ret.num = fread(data->ptr, data->size, data->nmemb, data->stream);
+    if (0 != errno) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline size_t cat_fs_fread_impl(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    cat_fs_fread_data_t *data = (cat_fs_fread_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs fread failed");
+        return 0;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->ptr = ptr;
+    data->size = size;
+    data->nmemb = nmemb;
+    data->stream = stream;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_fread_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return 0;
+    }
+    cat_fs_work_check_error(&data->ret.error, "fread");
+    return (size_t) data->ret.ret.num;
+}
+
+CAT_API size_t cat_fs_fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    int fd = -1;
+#endif
+    size_t n;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        fd = fileno(stream);
+        CAT_LOG_DEBUG_D(FS, "fread(" CAT_LOG_READ_BUFFER_FMT ", %zu, %zu, %d) = " CAT_LOG_UNFINISHED_STR,
+            CAT_LOG_READ_BUFFER_C(ptr), size, nmemb, fd);
+    });
+
+    n = cat_fs_fread_impl(ptr, size, nmemb, stream);
+
+    CAT_LOG_DEBUG(FS, "fread(" CAT_LOG_READ_BUFFER_FMT ", %zu, %zu, %d) = %zu",
+        CAT_LOG_READ_BUFFER_C(ptr), size, nmemb, fd, n);
+
+    return n;
+}
+
+typedef struct cat_fs_fwrite_data_s {
+    cat_fs_work_ret_t ret;
+    const void *ptr;
+    size_t size;
+    size_t nmemb;
+    FILE *stream;
+} cat_fs_fwrite_data_t;
+
+static void cat_fs_fwrite_cb(cat_data_t *ptr)
+{
+    cat_fs_fwrite_data_t *data = (cat_fs_fwrite_data_t *) ptr;
+    errno = 0;
+    data->ret.ret.num = fwrite(data->ptr, data->size, data->nmemb, data->stream);
+    if (0 != errno) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline size_t cat_fs_fwrite_impl(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    cat_fs_fwrite_data_t *data = (cat_fs_fwrite_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs fwrite failed");
+        return 0;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->ptr = ptr;
+    data->size = size;
+    data->nmemb = nmemb;
+    data->stream = stream;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_fwrite_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return 0;
+    }
+    cat_fs_work_check_error(&data->ret.error, "fwrite");
+    return (size_t) data->ret.ret.num;
+}
+
+CAT_API size_t cat_fs_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    int fd = -1;
+#endif
+    size_t n;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        fd = fileno(stream);
+        CAT_LOG_DEBUG_D(FS, "fwrite(" CAT_LOG_READ_BUFFER_FMT ", %zu, %zu, %d) = " CAT_LOG_UNFINISHED_STR,
+            CAT_LOG_READ_BUFFER_C(ptr), size, nmemb, fd);
+    });
+
+    n = cat_fs_fwrite_impl(ptr, size, nmemb, stream);
+
+    CAT_LOG_DEBUG(FS, "fwrite(" CAT_LOG_READ_BUFFER_FMT ", %zu, %zu, %d) = %zu",
+        CAT_LOG_READ_BUFFER_C(ptr), size, nmemb, fd, n);
+
+    return n;
+}
+
+typedef struct cat_fs_fseek_data_s {
+    cat_fs_work_ret_t ret;
+    FILE *stream;
+    off_t offset;
+    int whence;
+} cat_fs_fseek_data_t;
+
+static void cat_fs_fseek_cb(cat_data_t *ptr)
+{
+    cat_fs_fseek_data_t *data = (cat_fs_fseek_data_t *) ptr;
+    data->ret.ret.num = fseeko(data->stream, data->offset, data->whence);
+    if (0 != data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline int cat_fs_fseek_impl(FILE *stream, off_t offset, int whence)
+{
+    cat_fs_fseek_data_t *data = (cat_fs_fseek_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs fseek failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->stream = stream;
+    data->offset = offset;
+    data->whence = whence;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_fseek_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "fseek");
+    return (int) data->ret.ret.num;
+}
+
+CAT_API int cat_fs_fseek(FILE *stream, off_t offset, int whence)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    int fd = -1;
+#endif
+    int error;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        fd = fileno(stream);
+        CAT_LOG_DEBUG_D(FS, "fseek(%d, %jd, %d) = " CAT_LOG_UNFINISHED_STR,
+            fd, (intmax_t) offset, whence);
+    });
+
+    error = cat_fs_fseek_impl(stream, offset, whence);
+
+    CAT_LOG_DEBUG(FS, "fseek(%d, %jd, %d) = " CAT_LOG_INT_RET_FMT,
+        fd, (intmax_t) offset, whence, CAT_LOG_INT_RET_C(error));
+
+    return error;
+}
+
+typedef struct cat_fs_ftell_data_s {
+    cat_fs_work_ret_t ret;
+    FILE *stream;
+} cat_fs_ftell_data_t;
+
+static void cat_fs_ftell_cb(cat_data_t *ptr)
+{
+    cat_fs_ftell_data_t *data = (cat_fs_ftell_data_t *) ptr;
+    data->ret.ret.num = ftello(data->stream);
+    if (-1 == data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline off_t cat_fs_ftell_impl(FILE *stream)
+{
+    cat_fs_ftell_data_t *data = (cat_fs_ftell_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs ftell failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->stream = stream;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_ftell_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "ftell");
+    return (long) data->ret.ret.num;
+}
+
+CAT_API off_t cat_fs_ftell(FILE *stream)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    int fd = -1;
+#endif
+    off_t offset;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        fd = fileno(stream);
+        CAT_LOG_DEBUG_D(FS, "ftell(%d) = " CAT_LOG_UNFINISHED_STR, fd);
+    });
+
+    offset = cat_fs_ftell_impl(stream);
+
+    CAT_LOG_DEBUG(FS, "ftell(%d) = %jd", fd, (intmax_t) offset);
+
+    return offset;
+}
+
+typedef struct cat_fs_fflush_data_s {
+    cat_fs_work_ret_t ret;
+    FILE *stream;
+} cat_fs_fflush_data_t;
+
+static void cat_fs_fflush_cb(cat_data_t *ptr)
+{
+    cat_fs_fflush_data_t *data = (cat_fs_fflush_data_t *) ptr;
+    data->ret.ret.num = fflush(data->stream);
+    if (0 != data->ret.ret.num) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+}
+
+static cat_always_inline int cat_fs_fflush_impl(FILE *stream)
+{
+    cat_fs_fflush_data_t *data = (cat_fs_fflush_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs fflush failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->stream = stream;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_fflush_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "fflush");
+    return (long) data->ret.ret.num;
+}
+
+CAT_API int cat_fs_fflush(FILE *stream)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    int fd = -1;
+#endif
+    int error;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        fd = fileno(stream);
+        CAT_LOG_DEBUG_D(FS, "fflush(%d) = " CAT_LOG_UNFINISHED_STR, fd);
+    });
+
+    error = cat_fs_fflush_impl(stream);
+
+    CAT_LOG_DEBUG(FS, "fflush(%d) = " CAT_LOG_INT_RET_FMT, fd, CAT_LOG_INT_RET_C(error));
+
+    return error;
+}
+
+// platform-specific cat_work wrapped fs functions
+#ifndef CAT_OS_WIN
+
+static void cat_fs_async_closedir(void *ptr)
+{
+    uv_dir_t *dir = (uv_dir_t *) calloc(1, sizeof(*dir));
+    if (dir == NULL) {
+        return;
+    }
+    dir->dir = ptr;
+    cat_fs_context_t *context = (cat_fs_context_t *) cat_malloc(sizeof(*context));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (context == NULL) {
+        goto _malloc_context_error;
+    }
+#endif
+    context->coroutine = NULL;
+    if (uv_fs_closedir(&CAT_EVENT_G(loop), &context->fs, dir, cat_fs_callback) != 0) {
+        goto _closedir_error;
+    }
+    return;
+    _closedir_error:
+    cat_free(context);
+#if CAT_ALLOC_HANDLE_ERRORS
+    _malloc_context_error:
+#endif
+    free(dir);
+}
+
+typedef struct cat_fs_opendir_data_s {
+    cat_fs_work_ret_t ret;
+    char *path;
+    cat_bool_t canceled;
+} cat_fs_opendir_data_t;
+
+static void cat_fs_opendir_cb(cat_data_t *ptr)
+{
+    cat_fs_opendir_data_t *data = (cat_fs_opendir_data_t *) ptr;
+    CAT_ASSERT(NULL != data->path);
+
+    DIR *d = opendir(data->path);
+
+    if (NULL == d) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    }
+    data->ret.ret.ptr = d;
+}
+
+static void cat_fs_opendir_free(cat_data_t *ptr)
+{
+    cat_fs_opendir_data_t *data = (cat_fs_opendir_data_t *) ptr;
+
+    if (data->canceled && NULL != data->ret.ret.ptr) {
+        cat_fs_async_closedir(data->ret.ret.ptr);
+    }
+    cat_free(data->path);
+    cat_free(data);
+}
+
+static cat_always_inline cat_dir_t *cat_fs_opendir_impl(const char *path)
+{
+    if (!path) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid path (NULL)"
+        };
+        cat_fs_work_check_error(&error, "opendir");
+        return NULL;
+    }
+    cat_fs_opendir_data_t *data = (cat_fs_opendir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs opendir failed");
+        return NULL;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->canceled = cat_false;
+    data->path = cat_strdup(path);
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_opendir_cb, cat_fs_opendir_free, data, CAT_TIMEOUT_FOREVER)) {
+        // canceled, tell freer close handle
+        data->canceled = cat_true;
+        return NULL;
+    }
+    cat_fs_work_check_error(&data->ret.error, "opendir");
+    if (CAT_FS_ERROR_NONE != data->ret.error.type) {
+        return NULL;
+    }
+    // if no error occured, ret handle must be assigned
+    CAT_ASSERT(data->ret.ret.ptr);
+    // copy retval out
+    uv_dir_t *pdir = (uv_dir_t *) calloc(1, sizeof(uv_dir_t));
+    pdir->dir = data->ret.ret.ptr;
+    return pdir;
+}
+
+typedef struct cat_fs_readdir_data_s {
+    cat_fs_work_ret_t ret;
+    DIR *dir;
+    cat_bool_t canceled;
+} cat_fs_readdir_data_t;
+
+static void cat_fs_readdir_cb(cat_data_t *ptr)
+{
+    cat_fs_readdir_data_t *data = (cat_fs_readdir_data_t *) ptr;
+
+    errno = 0;
+    struct dirent *pdirent = readdir(data->dir);
+    if (NULL == pdirent) {
+        if (errno != 0) {
+            data->ret.error.type = CAT_FS_ERROR_ERRNO;
+            data->ret.error.val.error = errno;
+        } else  {
+            data->ret.error.type = CAT_FS_ERROR_EOF;
+        }
+        return;
+    }
+    cat_dirent_t *pret = (cat_dirent_t *) malloc(sizeof(*pret));
+    if (NULL == pret) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+        return;
+    }
+    pret->name = cat_sys_strdup(pdirent->d_name);
+#if CAT_SYS_ALLOC_HANDLE_ERRORS
+    if (NULL == pret->name) {
+        free(pret);
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+        return;
+    }
+#endif
+
+    // from uv
+    int type = 0;
+#ifdef HAVE_DIRENT_TYPES
+    switch (pdirent->d_type) {
+# define __CAT_DIRENT_TYPE_MAP(XX) \
+        XX(DIR) \
+        XX(FILE) \
+        XX(LINK) \
+        XX(FIFO) \
+        XX(SOCKET) \
+        XX(CHAR) \
+        XX(BLOCK)
+# define __CAT_DIRENT_TYPE_GEN(name) case UV__DT_##name: type = CAT_DIRENT_TYPE_##name; break;
+        __CAT_DIRENT_TYPE_MAP(__CAT_DIRENT_TYPE_GEN)
+# undef __CAT_DIRENT_TYPE_GEN
+# undef __CAT_DIRENT_TYPE_MAP
+    default:
+        type = CAT_DIRENT_TYPE_UNKNOWN;
+    }
+#endif
+    pret->type = type;
+    data->ret.ret.ptr = pret;
+}
+
+static void cat_fs_readdir_free(cat_data_t *ptr)
+{
+    cat_fs_readdir_data_t *data = (cat_fs_readdir_data_t *) ptr;
+
+    if (data->canceled) {
+        // if canceled, tell freer to free things
+        cat_fs_async_closedir(data->dir);
+    }
+    if (data->ret.ret.ptr) {
+        cat_dirent_t *dirent = (cat_dirent_t *) data->ret.ret.ptr;
+        if (dirent->name) {
+            free((void *) dirent->name);
+        }
+        free(dirent);
+    }
+    cat_free(data);
+}
+
+/*
+* cat_fs_readdir: like readdir(3), but return cat_dirent_t
+* Note: you should do both free(retval->name) and free(retval)
+*/
+static cat_always_inline cat_dirent_t *cat_fs_readdir_impl(cat_dir_t *dir)
+{
+    uv_dir_t *uv_dir = (uv_dir_t*) dir;
+    if (NULL == uv_dir || uv_dir->dir == NULL) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid dir handle"
+        };
+        cat_fs_work_check_error(&error, "readdir");
+        return NULL;
+    }
+    cat_fs_readdir_data_t *data = (cat_fs_readdir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs readdir failed");
+        return NULL;
+    }
+#endif
+    memset(data, 0, sizeof(*data));
+    data->dir = uv_dir->dir;
+    data->canceled = cat_false;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_readdir_cb, cat_fs_readdir_free, data, CAT_TIMEOUT_FOREVER)) {
+        uv_dir->dir = NULL;
+        data->canceled = cat_true;
+        return NULL;
+    }
+    if (CAT_FS_ERROR_EOF == data->ret.error.type) {
+        cat_clear_last_error();
+        return NULL;
+    }
+    cat_fs_work_check_error(&data->ret.error, "readdir");
+    if (CAT_FS_ERROR_NONE != data->ret.error.type) {
+        return NULL;
+    }
+    cat_dirent_t *work_ret = (cat_dirent_t *) data->ret.ret.ptr;
+    CAT_ASSERT(work_ret);
+    CAT_ASSERT(work_ret->name);
+    cat_dirent_t *ret = (cat_dirent_t *) malloc(sizeof(*ret));
+    ret->type = work_ret->type;
+    ret->name = cat_sys_strdup(work_ret->name);
+    return ret;
+}
+
+typedef struct cat_fs_rewinddir_data_s {
+    DIR *dir;
+    cat_bool_t canceled;
+} cat_fs_rewinddir_data_t;
+
+static void cat_fs_rewinddir_cb(cat_data_t *ptr)
+{
+    cat_fs_rewinddir_data_t *data = (cat_fs_rewinddir_data_t *) ptr;
+    rewinddir(data->dir);
+}
+
+static void cat_fs_rewinddir_free(cat_data_t *ptr)
+{
+    cat_fs_rewinddir_data_t *data = (cat_fs_rewinddir_data_t *) ptr;
+    if (data->canceled) {
+        // if canceled, tell freer to free things
+        cat_fs_async_closedir(data->dir);
+    }
+    cat_free(data);
+}
+
+static cat_always_inline void cat_fs_rewinddir_impl(cat_dir_t *dir)
+{
+    uv_dir_t *uv_dir = (uv_dir_t*) dir;
+    if (NULL == uv_dir || NULL == uv_dir->dir) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid dir handle"
+        };
+        cat_fs_work_check_error(&error, "rewinddir");
+        return;
+    }
+    cat_fs_rewinddir_data_t *data = (cat_fs_rewinddir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs rewinddir failed");
+        return;
+    }
+#endif
+    data->dir = uv_dir->dir;
+    data->canceled = cat_false;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_rewinddir_cb, cat_fs_rewinddir_free, data, CAT_TIMEOUT_FOREVER)) {
+        data->canceled = cat_true;
+        uv_dir->dir = NULL;
+    }
+}
+
+typedef struct cat_fs_closedir_data_s {
+    DIR *dir;
+} cat_fs_closedir_data_t;
+
+static void cat_fs_closedir_cb(cat_data_t *ptr)
+{
+    cat_fs_closedir_data_t *data = (cat_fs_closedir_data_t *) ptr;
+    closedir(data->dir);
+}
+
+static cat_always_inline int cat_fs_closedir_impl(cat_dir_t *dir)
+{
+    uv_dir_t *uv_dir = (uv_dir_t*) dir;
+    if (NULL == uv_dir) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid dir handle"
+        };
+        cat_fs_work_check_error(&error, "closedir");
+        return -1;
+    }
+    if (NULL == uv_dir->dir) {
+        free(uv_dir);
+        return 0;
+    }
+    cat_fs_closedir_data_t *data = (cat_fs_closedir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs closedir failed");
+        return -1;
+    }
+#endif
+    data->dir = uv_dir->dir;
+    free(uv_dir);
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_closedir_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+        return -1;
+    }
+    return 0;
+}
+
+#else
+
+// use NtQueryDirectoryFile to mock readdir,rewinddir behavior.
+typedef struct cat_dir_int_s {
+    HANDLE dir;
+    cat_bool_t rewind;
+} cat_dir_int_t;
+
+static HANDLE hntdll = NULL;
+
+static void cat_fs_proventdll(void)
+{
+    if (NULL != hntdll) {
+        return;
+    }
+    hntdll = GetModuleHandleW(L"ntdll.dll");
+    if (NULL == hntdll) {
+        hntdll= LoadLibraryExW(L"ntdll.dll", NULL, 0);
+    }
+}
+
+static ULONG(*pRtlNtStatusToDosError) (NTSTATUS) = NULL;
+
+static const char *cat_fs_proveRtlNtStatusToDosError(void)
+{
+    if (NULL == pRtlNtStatusToDosError) {
+        if (NULL == hntdll) {
+            cat_fs_proventdll();
+            if (NULL == hntdll) {
+                return "Cannot open ntdll.dll";
+            }
+        }
+#ifdef _MSC_VER
+# pragma warning(disable:4191) /* FIXME: workaround for MSVC bug */
+#endif
+        pRtlNtStatusToDosError = (ULONG (*)(NTSTATUS)) GetProcAddress(hntdll, "RtlNtStatusToDosError");
+#ifdef _MSC_VER
+# pragma warning(default:4191) /* FIXME: workaround for MSVC bug */
+#endif
+        if (NULL == pRtlNtStatusToDosError) {
+            return "Cannot resolve RtlNtStatusToDosError";
+        }
+    }
+    return NULL;
+}
+
+/*
+static const char *cat_fs_nt_strerror(NTSTATUS status)
+{
+    // printf("NTSTATUS 0x%08x\n", status);
+    const char *_msg;
+    if (NULL != (_msg = cat_fs_proveRtlNtStatusToDosError())) {
+        const char *msg = cat_sprintf("%s on processing NTSTATUS %08x", msg, status);
+        cat_free(_msg);
+        return _msg;
+    }
+    // printf("HRESULT 0x%08x\n", pRtlNtStatusToDosError(status));
+    return cat_fs_win_strerror(pRtlNtStatusToDosError(status));
+}
+*/
+
+typedef struct cat_fs_opendir_data_s {
+    cat_fs_work_ret_t ret;
+    const char *path;
+    cat_bool_t canceled;
+} cat_fs_opendir_data_t;
+
+static void cat_fs_opendir_cb(cat_data_t *ptr)
+{
+    cat_fs_opendir_data_t *data = (cat_fs_opendir_data_t *) ptr;
+    CAT_ASSERT(NULL != data->path);
+    LPCWSTR pathw = cat_fs_mbs2wcs(data->path);
+
+    HANDLE dir_handle = CreateFileW(
+        pathw, // filename
+        FILE_LIST_DIRECTORY | SYNCHRONIZE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS,
+        NULL
+    );
+    // printf("created %p\n", dir_handle);
+    HeapFree(GetProcessHeap(), 0, (LPVOID) pathw);
+
+    if (INVALID_HANDLE_VALUE == dir_handle) {
+        data->ret.error.type = CAT_FS_ERROR_WIN32;
+        data->ret.error.val.error = GetLastError();
+    }
+    data->ret.ret.handle = dir_handle;
+}
+
+static void cat_fs_opendir_free(cat_fs_opendir_data_t *data)
+{
+    if (data->canceled && INVALID_HANDLE_VALUE != data->ret.ret.handle) {
+        CloseHandle(data->ret.ret.handle);
+    }
+    if (data->path) {
+        cat_free((void*) data->path);
+    }
+    cat_free(data);
+}
+
+static cat_always_inline cat_dir_t *cat_fs_opendir_impl(const char *_path)
+{
+    wrappath(_path, path);
+    if (!path) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid path (NULL)"
+        };
+        cat_fs_work_check_error(&error, "opendir");
+        return NULL;
+    }
+    cat_fs_opendir_data_t *data = (cat_fs_opendir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs opendir failed");
+        return NULL;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->canceled = cat_false;
+    data->path = cat_strdup(path);
+    data->ret.ret.handle = INVALID_HANDLE_VALUE;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_opendir_cb, cat_fs_opendir_free, data, CAT_TIMEOUT_FOREVER)) {
+        // canceled, tell freer close handle
+        data->canceled = cat_true;
+        return NULL;
+    }
+    cat_fs_work_check_error(&data->ret.error, "opendir");
+    if (CAT_FS_ERROR_NONE != data->ret.error.type) {
+        return NULL;
+    }
+    // if no error occured, ret handle must be assigned
+    CAT_ASSERT(INVALID_HANDLE_VALUE != data->ret.ret.handle);
+    // copy retval out
+    cat_dir_int_t *pdir = malloc(sizeof(cat_dir_int_t));
+    pdir->dir = data->ret.ret.handle;
+    pdir->rewind = cat_true;
+    return pdir;
+}
+
+typedef struct cat_fs_closedir_data_s {
+    cat_fs_work_ret_t ret;
+    HANDLE handle;
+} cat_fs_closedir_data_t;
+
+static void cat_fs_closedir_cb(cat_data_t *ptr)
+{
+    cat_fs_closedir_data_t *data = (cat_fs_closedir_data_t *) ptr;
+    BOOL ret = CloseHandle(data->handle);
+    if (FALSE == ret) {
+        data->ret.error.type = CAT_FS_ERROR_WIN32;
+        data->ret.error.val.error = GetLastError();
+    }
+    data->ret.ret.num = ret;
+    return;
+}
+/*
+*   cat_fs_closedir: close dir returned by cat_fs_opendir
+*   NOTE: this will free the dir passed in unconditionally
+*/
+static cat_always_inline int cat_fs_closedir_impl(cat_dir_t *dir)
+{
+    if (NULL == dir) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid dir handle"
+        };
+        cat_fs_work_check_error(&error, "closedir");
+        return -1;
+    }
+    if (INVALID_HANDLE_VALUE == ((cat_dir_int_t*) dir)->dir) {
+        free(dir);
+        return 0;
+    }
+    cat_fs_closedir_data_t *data = (cat_fs_closedir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs closedir failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->handle = ((cat_dir_int_t *) dir)->dir;
+    free(dir);
+    cat_bool_t ret = cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_closedir_cb, cat_free_function, data, CAT_TIMEOUT_FOREVER);
+    if (!ret) {
+        return -1;
+    }
+    cat_fs_work_check_error(&data->ret.error, "closedir");
+    if (CAT_FS_ERROR_NONE != data->ret.error.type) {
+        return -1;
+    }
+    return 0;
+}
+
+typedef struct _CAT_FILE_DIRECTORY_INFORMATION {
+  ULONG         NextEntryOffset;
+  ULONG         FileIndex;
+  LARGE_INTEGER CreationTime;
+  LARGE_INTEGER LastAccessTime;
+  LARGE_INTEGER LastWriteTime;
+  LARGE_INTEGER ChangeTime;
+  LARGE_INTEGER EndOfFile;
+  LARGE_INTEGER AllocationSize;
+  ULONG         FileAttributes;
+  ULONG         FileNameLength;
+  WCHAR         FileName[1];
+} CAT_FILE_DIRECTORY_INFORMATION, *CAT_PFILE_DIRECTORY_INFORMATION;
+
+typedef struct cat_fs_readdir_data_s {
+    cat_fs_work_ret_t ret;
+    cat_dir_int_t dir;
+} cat_fs_readdir_data_t;
+
+static void cat_fs_readdir_cb(cat_data_t *ptr)
+{
+    cat_fs_readdir_data_t *data = (cat_fs_readdir_data_t *) ptr;
+    static __kernel_entry NTSTATUS (*pNtQueryDirectoryFile)(HANDLE,
+        HANDLE, PVOID, PVOID, PVOID, PVOID, ULONG, FILE_INFORMATION_CLASS,
+        BOOLEAN, PVOID, BOOLEAN) = NULL;
+    if (NULL == pNtQueryDirectoryFile) {
+        if (NULL == hntdll) {
+            cat_fs_proventdll();
+            if (NULL == hntdll) {
+                data->ret.error.msg_free = CAT_FS_FREER_NONE;
+                data->ret.error.msg = "Cannot open ntdll.dll on finding NtQueryDirectoryFile in readdir";
+                data->ret.error.type = CAT_FS_ERROR_WIN32;
+                data->ret.error.val.error = GetLastError();
+                return;
+            }
+        }
+#ifdef _MSC_VER /* FIXME: workaround for MSVC bug */
+# pragma warning(disable:4191)
+#endif
+        pNtQueryDirectoryFile = (NTSTATUS (*)(HANDLE, HANDLE, PVOID, PVOID, PVOID, PVOID, ULONG, FILE_INFORMATION_CLASS, BOOLEAN, PVOID, BOOLEAN))
+            GetProcAddress(hntdll, "NtQueryDirectoryFile");
+#ifdef _MSC_VER /* FIXME: workaround for MSVC bug */
+# pragma warning(default:4191)
+#endif
+        if (NULL == pNtQueryDirectoryFile) {
+            data->ret.error.msg_free = CAT_FS_FREER_NONE;
+            data->ret.error.msg = "Cannot find NtQueryDirectoryFile in readdir";
+            data->ret.error.type = CAT_FS_ERROR_WIN32;
+            data->ret.error.val.error = GetLastError();
+            return;
+        }
+    }
+
+    IO_STATUS_BLOCK iosb = {0};
+    NTSTATUS status;
+# if _MSC_VER
+    __declspec(align(8))
+# else
+    __attribute__ ((aligned (8)))
+# endif // _MSC_VER
+        char buffer[8192];
+    status = pNtQueryDirectoryFile(
+        data->dir.dir, // file handle
+        NULL, // whatever
+        NULL, // whatever
+        NULL, // whatever
+        &iosb,
+        &buffer,
+        sizeof(buffer),
+        FileDirectoryInformation,
+        TRUE, // if we get only 1 entry
+        NULL, // wildcard filename
+        data->dir.rewind // from first
+    );
+
+    if (!NT_SUCCESS(status)) {
+        const char *_msg;
+        if (NULL != (_msg = cat_fs_proveRtlNtStatusToDosError())) {
+            data->ret.error.msg_free = CAT_FS_FREER_CAT_FREE;
+            data->ret.error.msg = cat_sprintf("%s on processing NTSTATUS %08x", _msg, status);
+            data->ret.error.type = CAT_FS_ERROR_CAT_ERRNO;
+            data->ret.error.val.cat_errno = CAT_UNCODED;
+            return;
+        }
+        else {
+            data->ret.error.type = CAT_FS_ERROR_WIN32;
+            data->ret.error.val.error = pRtlNtStatusToDosError(status);
+            return;
+        }
+    }
+
+    if (data->dir.rewind) {
+        data->dir.rewind = cat_false;
+    }
+
+    cat_dirent_t *pdirent = (cat_dirent_t *) malloc(sizeof(*pdirent));
+    if (NULL == pdirent) {
+        data->ret.error.type = CAT_FS_ERROR_WIN32;
+        data->ret.error.val.error =  ERROR_NOT_ENOUGH_MEMORY;
+        return;
+    }
+
+    CAT_PFILE_DIRECTORY_INFORMATION pfdi = (CAT_PFILE_DIRECTORY_INFORMATION)&buffer;
+
+    char fn_buf[4096];
+    DWORD r = WideCharToMultiByte(
+        CP_UTF8, // code page
+        0, // flags
+        pfdi->FileName, // src
+        pfdi->FileNameLength / sizeof(WCHAR), // srclen
+        fn_buf, // dest
+        4096, // destlen
+        NULL, // default char
+        FALSE // use default char
+    );
+    fn_buf[r] = 0;
+    pdirent->name = cat_sys_strdup(fn_buf);
+
+    // from uv
+    if (pfdi->FileAttributes & FILE_ATTRIBUTE_DEVICE) {
+        pdirent->type = CAT_DIRENT_TYPE_CHAR;
+    } else if (pfdi->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        pdirent->type = CAT_DIRENT_TYPE_LINK;
+    } else if (pfdi->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        pdirent->type = CAT_DIRENT_TYPE_DIR;
+    } else {
+        pdirent->type = CAT_DIRENT_TYPE_FILE;
+    }
+    data->ret.ret.ptr = pdirent;
+}
+
+static void cat_fs_readdir_free(cat_data_t *ptr)
+{
+    cat_fs_readdir_data_t *data = (cat_fs_readdir_data_t *) ptr;
+    cat_dirent_t *dirent = (cat_dirent_t *) data->ret.ret.ptr;
+    if (dirent) {
+        if (dirent->name) {
+            free((void *) dirent->name);
+        }
+        free(dirent);
+    }
+    cat_free(data);
+}
+/*
+*   cat_fs_readdir: read a file entry in cat_dir_t
+*   NOTE: if canceled, the dir will be unusable after cancel.
+*/
+static cat_always_inline cat_dirent_t *cat_fs_readdir_impl(cat_dir_t *dir)
+{
+    cat_dir_int_t *pintdir = dir;
+    if (NULL == pintdir || INVALID_HANDLE_VALUE == pintdir->dir) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid dir handle"
+        };
+        cat_fs_work_check_error(&error, "closedir");
+        return NULL;
+    }
+    cat_fs_readdir_data_t *data = (cat_fs_readdir_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs readdir failed");
+        return NULL;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->dir.dir = pintdir->dir;
+    data->dir.rewind = pintdir->rewind;
+    if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_readdir_cb, cat_fs_readdir_free, data, CAT_TIMEOUT_FOREVER)) {
+        // canceled
+        CloseHandle(pintdir->dir);
+        pintdir->dir = INVALID_HANDLE_VALUE;
+        return NULL;
+    }
+    cat_fs_work_check_error(&data->ret.error, "readdir");
+    if (data->ret.error.type != CAT_FS_ERROR_NONE) {
+        return NULL;
+    }
+    CAT_ASSERT(data->ret.ret.ptr);
+    pintdir->rewind = data->dir.rewind;
+    cat_dirent_t *cbret = (cat_dirent_t *) data->ret.ret.ptr;
+    cat_dirent_t *ret = (cat_dirent_t *) malloc(sizeof(*ret));
+    ret->name = cat_sys_strdup(cbret->name);
+    ret->type = cbret->type;
+    return ret;
+}
+
+static cat_always_inline void cat_fs_rewinddir_impl(cat_dir_t *dir)
+{
+    if (NULL == dir) {
+        cat_fs_error_t error = {
+            .type = CAT_FS_ERROR_ERRNO,
+            .val.error = EINVAL,
+            .msg_free = CAT_FS_FREER_NONE,
+            .msg = "Invalid dir handle"
+        };
+        cat_fs_work_check_error(&error, "rewinddir");
+        return;
+    }
+    ((cat_dir_int_t *) dir)->rewind = cat_true;
+}
+#endif // CAT_OS_WIN
+
+CAT_API cat_dir_t *cat_fs_opendir(const char *path)
+{
+    cat_dir_t *dir;
+    CAT_LOG_DEBUG(FS, "opendir(\"%s\") = " CAT_LOG_UNFINISHED_STR, path);
+    dir = cat_fs_opendir_impl(path);
+    CAT_LOG_DEBUG(FS, "opendir(\"%s\") = " CAT_LOG_PTR_RET_FMT, path, CAT_LOG_PTR_RET_C(dir));
+    return dir;
+}
+
+CAT_API cat_dirent_t *cat_fs_readdir(cat_dir_t *dir)
+{
+    cat_dirent_t *ret;
+    // TODO: show readdir here
+    CAT_LOG_DEBUG(FS, "readdir(%p) = " CAT_LOG_UNFINISHED_STR, dir);
+    ret = cat_fs_readdir_impl(dir);
+    CAT_LOG_DEBUG(FS, "readdir(%p) = " CAT_LOG_PTR_RET_FMT, dir, CAT_LOG_PTR_RET_C(ret));
+    return ret;
+}
+
+CAT_API void cat_fs_rewinddir(cat_dir_t *dir)
+{
+    CAT_LOG_DEBUG(FS, "rewinddir(%p) = " CAT_LOG_UNFINISHED_STR, dir);
+    cat_fs_rewinddir_impl(dir);
+    // TODO: show dir here
+    CAT_LOG_DEBUG(FS, "rewinddir(%p) = done", dir);
+}
+
+CAT_API int cat_fs_closedir(cat_dir_t *dir)
+{
+    int error;
+    CAT_LOG_DEBUG(FS, "closedir(%p) = " CAT_LOG_UNFINISHED_STR, dir);
+    error = cat_fs_closedir_impl(dir);
+    CAT_LOG_DEBUG(FS, "closedir(%p) = " CAT_LOG_INT_RET_FMT, dir, CAT_LOG_INT_RET_C(error));
+    return error;
+}
+
+typedef struct cat_fs_flock_data_s {
+    cat_fs_work_ret_t ret;
+    cat_file_t fd;
+    cat_fs_flock_flags_t op;
+    cat_bool_t non_blocking; /* operation is non-blocking (UN/NB) */
+    cat_bool_t started; /* new thread in worker */
+    cat_bool_t done; /* new thread finished */
+    uv_thread_t tid;
+    cat_async_t async;
+    cat_event_shutdown_task_t *shutdown_task;
+} cat_fs_flock_data_t;
+
+/*
+* original flock(2) platform-specific implement
+*/
+static void cat_fs_orig_flock(cat_data_t *ptr)
+{
+    cat_fs_flock_data_t *data = (cat_fs_flock_data_t *) ptr;
+    cat_file_t fd = data->fd;
+    int op = data->op;
+#ifdef CAT_OS_WIN
+    // Windows implement
+    int op_type = op & (CAT_FS_FLOCK_FLAG_SHARED | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_UNLOCK);
+    DWORD le;
+    HANDLE hFile;
+    OVERLAPPED overlapped = { 0 };
+    if (INVALID_HANDLE_VALUE == (hFile = uv_get_osfhandle(fd))) {
+        // bad fd, return error
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = EBADF;
+        data->ret.ret.num = -1;
+        goto _done;
+    }
+
+    // mock unix-like behavier: if we already have a lock,
+    // flock only update the lock to specified type (shared or exclusive)
+    // so we unlock first, then re-lock it
+    if (
+        (!UnlockFileEx(
+            hFile,
+            0,
+            MAXDWORD,
+            MAXDWORD,
+            &overlapped
+        )) &&
+        (le = GetLastError()) != ERROR_NOT_LOCKED // not an error
+    ) {
+        // unlock failed
+        // printf("u failed\n");
+        // printf("le %08x\n", errno, GetLastError());
+        data->ret.error.type = CAT_FS_ERROR_WIN32;
+        data->ret.error.val.le = le;
+        data->ret.ret.num = -1;
+        goto _done;
+    }
+
+    if (CAT_FS_FLOCK_FLAG_UNLOCK == op_type) {
+        // request unlock and already unlocked
+        // printf("u end\n");
+        data->ret.ret.num = 0;
+        goto _done;
+    }
+
+    if (LockFileEx(
+        hFile,
+        (
+            ((CAT_FS_FLOCK_FLAG_NONBLOCK & op) ? LOCKFILE_FAIL_IMMEDIATELY : 0) |
+            ((CAT_FS_FLOCK_FLAG_EXCLUSIVE == op_type) ? LOCKFILE_EXCLUSIVE_LOCK : 0)
+        ),
+        0,
+        MAXDWORD,
+        MAXDWORD,
+        &overlapped
+    )) {
+        // lock success
+        data->ret.ret.num = 0;
+        goto _done;
+    }
+
+    if ((CAT_FS_FLOCK_FLAG_NONBLOCK & op) != CAT_FS_FLOCK_FLAG_NONBLOCK) {
+        // blocking lock failed
+        // printf("b done\n");
+        data->ret.error.type = CAT_FS_ERROR_WIN32;
+        data->ret.error.val.le = GetLastError();
+        data->ret.ret.num = -1;
+        goto _done;
+    }
+
+    // if LOCK_NB is set, but we donot get lock
+    // we should unlock it after it was done (cancelling lock behavior)
+    // printf("nb wait\n");
+    data->ret.error.type = CAT_FS_ERROR_CAT_ERRNO;
+    data->ret.error.val.le = CAT_EAGAIN;
+    data->ret.ret.num = -1;
+
+    // tell calling thread return
+    data->done = cat_true;
+    cat_async_notify(&data->async);
+
+    DWORD dummy;
+    // BOOL done =
+    GetOverlappedResult(hFile, &overlapped, &dummy, 1);
+    // printf("nb wait done\n");
+    UnlockFileEx(
+        hFile,
+        0,
+        MAXDWORD,
+        MAXDWORD,
+        &overlapped
+    );
+    return;
+
+#elif defined(LOCK_EX) && defined(LOCK_SH) && defined(LOCK_UN)
+    // Linux / BSDs / macOS implement with flock(2)
+    int operation = 0;
+# ifdef LOCK_NB
+#  define FLOCK_HAVE_NB
+    operation = op;
+# else
+    operation = op & (CAT_FS_FLOCK_FLAG_SHARED | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_UNLOCK);
+# endif // LOCK_NB
+    data->ret.ret.num = flock(fd, operation);
+    if (data->ret.ret.num != 0) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    } else {
+        data->ret.error.type = CAT_FS_ERROR_NONE;
+    }
+    goto _done;
+#elif defined(F_SETLK) && defined(F_SETLKW) && defined(F_RDLCK) && defined(F_WRLCK) && defined(F_UNLCK)
+    // fcntl implement
+# define FLOCK_HAVE_NB
+    int op_type = op & (CAT_FS_FLOCK_FLAG_SHARED | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_UNLOCK);
+    int cmd = (CAT_FS_FLOCK_FLAG_NONBLOCK == (op & CAT_FS_FLOCK_FLAG_NONBLOCK)) ? F_SETLK : F_SETLKW;
+    struct flock lbuf = {
+        .l_whence = SEEK_SET,
+        .l_start = 0,
+        .l_len = 0
+    };
+    if (CAT_FS_FLOCK_FLAG_SHARED == op_type) {
+        lbuf.l_type = F_RDLCK;
+    } else if (CAT_FS_FLOCK_FLAG_EXCLUSIVE == op_type) {
+        lbuf.l_type = F_WRLCK;
+    } else if (CAT_FS_FLOCK_FLAG_UNLOCK == op_type) {
+        lbuf.l_type = F_UNLCK;
+    }
+    data->ret.ret.num = fcntl(fd, cmd, &lbuf);
+    if (data->ret.ret.num == -1) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    } else {
+        data->ret.error.type = CAT_FS_ERROR_NONE;
+    }
+    goto _done;
+#elif defined(F_LOCK) && defined(F_ULOCK) && defined(F_TLOCK)
+    // lockf implement (not well tested, maybe buggy)
+    // linux man page lockf(3) says
+    // "POSIX.1 leaves the relationship between lockf() and fcntl(2) locks unspecified"
+    // so we assume that some os may have an indepednent lockf implement
+# define FLOCK_HAVE_NB
+    int op_type = op & (CAT_FS_FLOCK_FLAG_SHARED | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_UNLOCK);
+    int cmd;
+    if (CAT_FS_FLOCK_FLAG_SHARED == op_type) {
+        // fcntl donot have a share flock
+        data->ret.ret.num = -1;
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = EINVAL;
+        goto _done;
+    } else if (CAT_FS_FLOCK_FLAG_EXCLUSIVE == op_type) {
+        if ((CAT_FS_FLOCK_FLAG_NONBLOCK & op) == CAT_FS_FLOCK_FLAG_NONBLOCK) {
+            cmd = F_TLOCK;
+        } else {
+            cmd = F_LOCK;
+        }
+    } else if (CAT_FS_FLOCK_FLAG_UNLOCK == op_type) {
+        cmd = F_ULOCK;
+    }
+    // we need seek to 0, then do this
+    // however this is not atomic for this fd
+    data->ret.ret.num = lockf(fd, cmd, 0); // not real full file
+    if (data->ret.ret.num != 0) {
+        data->ret.error.type = CAT_FS_ERROR_ERRNO;
+        data->ret.error.val.error = errno;
+    } else {
+        data->ret.error.type = CAT_FS_ERROR_NONE;
+    }
+    goto _done;
+#else
+    // maybe sometimes we can implement robust flock by ourselves?
+# warning "not supported platform for flock"
+    data->ret.ret.num = -1;
+    data->ret.error.type = CAT_FS_ERROR_ERRNO;
+    data->ret.error.val.error = ENOSYS;
+    goto _done;
+#endif // LOCK_EX...
+    _done:
+    data->done = cat_true;
+    if (!data->non_blocking) {
+        cat_async_notify(&data->async);
+    }
+}
+
+// work (thread pool) callback
+static void cat_fs_flock_cb(cat_data_t *ptr)
+{
+    cat_fs_flock_data_t *data = (cat_fs_flock_data_t *) ptr;
+    // we do not put blocking flock into thread pool directly,
+    // we create another thread to do flock to avoid deadlock when thread pool is full
+    // (all threads in pool waiting flock(xx, LOCK_EX), while flock(xx, LOCK_UN) after them in queue)
+    uv_thread_options_t params = {
+        .flags = UV_THREAD_HAS_STACK_SIZE,
+        .stack_size = 4 * cat_getpagesize()
+    };
+    int error = uv_thread_create_ex(&data->tid, &params, cat_fs_orig_flock, data);
+    if (0 != error) {
+        // printf("thread failed\n");
+        data->ret.ret.num = -1;
+        data->ret.error.type = CAT_FS_ERROR_CAT_ERRNO;
+        data->ret.error.val.cat_errno = error;
+        cat_async_notify(&data->async);
+    } else {
+        data->started = cat_true;
+    }
+}
+
+static void cat_fs_flock_data_cleanup(cat_async_t *async)
+{
+    cat_fs_flock_data_t *data = cat_container_of(async, cat_fs_flock_data_t, async);
+
+    CAT_ASSERT(!data->started || data->done);
+    if (data->shutdown_task != NULL) {
+        cat_event_unregister_runtime_shutdown_task(data->shutdown_task);
+    }
+    if (data->started) {
+        uv_thread_join(&data->tid); // shell we run it in work()?
+    }
+    cat_free(data);
+}
+
+static void cat_fs_flock_shutdown(cat_data_t *ptr)
+{
+    cat_fs_flock_data_t *data = (cat_fs_flock_data_t *) ptr;
+
+    while (!data->started) {
+        cat_sys_usleep(1000);
+    }
+    if (!data->done) {
+        // try to kill thread as much as possible
+#ifndef CAT_OS_WIN
+        (void) pthread_kill(data->tid, SIGKILL);
+#else
+        (void) TerminateThread(data->tid, 1);
+#endif
+        // force close
+        data->shutdown_task = NULL;
+        cat_async_close(&data->async, cat_fs_flock_data_cleanup);
+    }
+}
+
+#ifdef FLOCK_HAVE_NB
+#define _CAT_FS_FLOCK_FLAG_NONBLOCK CAT_FS_FLOCK_FLAG_NONBLOCK
+#else
+#define _CAT_FS_FLOCK_FLAG_NONBLOCK 0
+#endif // FLOCK_HAVE_NB
+
+/*
+* flock(2) like implement for coroutine model
+*/
+static cat_always_inline int cat_fs_flock_impl(cat_file_t fd, cat_fs_flock_flags_t op)
+{
+    int op_type = (CAT_FS_FLOCK_FLAG_UNLOCK | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_SHARED) & op;
+    if (
+        (op & (~(CAT_FS_FLOCK_FLAG_NONBLOCK | CAT_FS_FLOCK_FLAG_UNLOCK | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_SHARED))) ||
+        (CAT_FS_FLOCK_FLAG_UNLOCK != op_type && CAT_FS_FLOCK_FLAG_EXCLUSIVE != op_type && CAT_FS_FLOCK_FLAG_SHARED != op_type)
+    ) {
+        cat_update_last_error_with_reason(CAT_EINVAL, "Flock failed");
+        return -1;
+    }
+    cat_fs_flock_data_t *data = (cat_fs_flock_data_t *) cat_malloc(sizeof(*data));
+#if CAT_ALLOC_HANDLE_ERRORS
+    if (data == NULL) {
+        cat_update_last_error_of_syscall("Malloc for fs flock failed");
+        return -1;
+    }
+#endif
+    memset(&data->ret, 0, sizeof(data->ret));
+    data->fd = fd;
+    data->op = op;
+    data->started = cat_false;
+    data->done = cat_false;
+    data->non_blocking = ((data->op & (CAT_FS_FLOCK_FLAG_SHARED | CAT_FS_FLOCK_FLAG_EXCLUSIVE | CAT_FS_FLOCK_FLAG_UNLOCK)) == CAT_FS_FLOCK_FLAG_UNLOCK) || (data->op & _CAT_FS_FLOCK_FLAG_NONBLOCK);
+    data->shutdown_task = NULL;
+    if (data->non_blocking) {
+        // operation is non-blocking, things done immediately
+        if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_orig_flock, cat_free_function, data, CAT_TIMEOUT_FOREVER)) {
+            return -1;
+        }
+    } else {
+        if (cat_async_create(&data->async) != &data->async) {
+            return -1;
+        }
+        if (!cat_work(CAT_WORK_KIND_FAST_IO, cat_fs_flock_cb, NULL, data, CAT_TIMEOUT_FOREVER)) {
+            data->shutdown_task = cat_event_register_runtime_shutdown_task(cat_fs_flock_shutdown, data);
+            cat_async_cleanup(&data->async, cat_fs_flock_data_cleanup);
+            return -1;
+        }
+        if (!cat_async_wait_and_close(&data->async, cat_fs_flock_data_cleanup, CAT_TIMEOUT_FOREVER)) {
+            data->shutdown_task = cat_event_register_runtime_shutdown_task(cat_fs_flock_shutdown, data);
+            return -1;
+        }
+    }
+    cat_fs_work_check_error(&data->ret.error, "flock");
+    return (int) data->ret.ret.num;
+}
+
+#ifdef CAT_ENABLE_DEBUG_LOG
+static CAT_BUFFER_STR_FREE char *cat_fs_flock_flags_str(cat_fs_flock_flags_t flags)
+{
+    cat_buffer_t buffer;
+    cat_buffer_create(&buffer, 32);
+#define CAT_FS_FLOCK_FLAG_APPEND_GEN(name) \
+    if (flags & CAT_FS_FLOCK_FLAG_##name) { \
+        cat_buffer_append_str(&buffer, #name "|"); \
+    }
+    CAT_FS_FLOCK_FLAG_MAP(CAT_FS_FLOCK_FLAG_APPEND_GEN);
+#undef CAT_FS_FLOCK_FLAG_APPEND_GEN
+    if (buffer.length == 0) {
+        cat_buffer_append_str(&buffer, "NONE");
+    } else {
+        buffer.length--;
+    }
+    return cat_buffer_export_str(&buffer);
+}
+#endif
+
+CAT_API int cat_fs_flock(cat_file_t fd, cat_fs_flock_flags_t operation)
+{
+#ifdef CAT_ENABLE_DEBUG_LOG
+    char *operation_str = NULL;
+#endif
+    int ret;
+
+    CAT_LOG_DEBUG_VA(FS, {
+        operation_str = cat_fs_flock_flags_str(operation);
+        CAT_LOG_DEBUG_D(FS, "flock(" CAT_FS_FILE_FMT ", %s) = " CAT_LOG_UNFINISHED_STR, fd, operation_str);
+    });
+
+    ret = cat_fs_flock_impl(fd, operation);
+
+    CAT_LOG_DEBUG_VA(FS, {
+        CAT_LOG_DEBUG_D(FS, "flock(" CAT_FS_FILE_FMT ", %s) = " CAT_LOG_INT_RET_FMT, fd, operation_str, CAT_LOG_INT_RET_C(ret));
+        cat_free(operation_str);
+    });
+
+    return ret;
+}
+
+#undef _CAT_FS_FLOCK_FLAG_NONBLOCK
+
+CAT_API char *cat_fs_get_contents(const char *filename, size_t *length)
+{
+    cat_file_t fd = cat_fs_open(filename, CAT_FS_OPEN_FLAG_RDONLY);
+
+    if (length != NULL) {
+        *length = 0;
+    }
+    if (fd == CAT_OS_INVALID_FD) {
+        return NULL;
+    }
+    off_t offset = cat_fs_lseek(fd, 0, SEEK_END);
+    if (offset < 0) {
+        return NULL;
+    }
+    size_t size = (size_t) offset;
+    char *buffer = (char *) cat_malloc(size + 1);
+    if (buffer == NULL) {
+        cat_update_last_error_of_syscall("Malloc for file content failed");
+        return NULL;
+    }
+    ssize_t nread = cat_fs_pread(fd, buffer, size, 0);
+    if (nread < 0) {
+        cat_free(buffer);
+        return NULL;
+    }
+    buffer[nread] = '\0';
+    if (length != NULL) {
+        *length = (size_t) nread;
+    }
+
+    return buffer;
+}
+
+CAT_API ssize_t cat_fs_put_contents(const char *filename, const char *content, size_t length)
+{
+    cat_file_t fd = cat_fs_open(filename,  CAT_FS_OPEN_FLAG_CREAT | CAT_FS_OPEN_FLAG_TRUNC | CAT_FS_OPEN_FLAG_WRONLY, 0666);
+
+    if (fd == CAT_OS_INVALID_FD) {
+        return -1;
+    }
+
+    return cat_fs_pwrite(fd, content, length, 0);
+}

@@ -1,1 +1,0 @@
-swoole-cli -d swoole.use_shortname=Off bin/hyperf.php start

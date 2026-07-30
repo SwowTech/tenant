@@ -1,2 +1,0 @@
-# 业务扩展目录需入库（utils\Json / bases / exceptions 等）
-# 不要再用 * 忽略整目录

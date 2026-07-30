@@ -1,0 +1,50 @@
+{
+    "name": "swow/swow-library",
+    "description": "Coroutine-based multi-platform support library with a focus on concurrent I/O",
+    "keywords": [
+        "swow",
+        "library"
+    ],
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "twose",
+            "email": "twosee@php.net"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/swow/swow"
+    },
+    "require": {
+        "php": ">=8.0",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.1|^2.0"
+    },
+    "replace": {
+        "swow/psr7-plus": "*"
+    },
+    "suggest": {
+        "ext-swow": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Swow\\": "src/",
+            "Swow\\Psr7\\": "src/Psr7/",
+            "Swow\\Psr7\\Message\\": "lib/psr7-plus/src/Message/"
+        },
+        "files": [
+            "src/bootstrap.php",
+            "src/Debug/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Swow\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "process-timeout": 0,
+        "sort-packages": true
+    }
+}

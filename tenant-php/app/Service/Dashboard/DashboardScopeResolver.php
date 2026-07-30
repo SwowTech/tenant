@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Dashboard;
 
 use App\Http\CurrentUser;
+use App\Library\Auth\FounderGate;
 use App\Library\Tenant\TenantContext;
 
 class DashboardScopeResolver
@@ -46,16 +47,7 @@ class DashboardScopeResolver
 
     public function isFounder(): bool
     {
-        if ($this->currentUser->id() === 1) {
-            return true;
-        }
-
-        $user = $this->currentUser->user();
-        if ($user === null) {
-            return false;
-        }
-
-        return $user->roles()->where('code', 'founder')->exists();
+        return FounderGate::allows($this->currentUser->id(), $this->currentUser->user());
     }
 
     /**
