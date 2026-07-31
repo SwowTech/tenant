@@ -26,3 +26,7 @@ Thumbs.db
 **/*.bak/
 **/*.bak
 **/*.js.map
+
+# 私用应用：服务器手动上传，禁止入库以免 pull 覆盖
+tenant-php/apps/swowtech/xunlian-trace/
+tenant-php/apps/swowtech/xunlian-trace-tp6/
