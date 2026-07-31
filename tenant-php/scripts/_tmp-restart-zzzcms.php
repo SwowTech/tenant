@@ -16,7 +16,7 @@ ClassLoader::init(handler: new ProcScanHandler());
 require BASE_PATH . '/config/container.php';
 
 $m = ApplicationContext::getContainer()->get(AppProcessManager::class);
-$m->stop('swowtech/yiqicms');
+$m->stop('swowtech/zzzcms');
 echo "stopped\n";
-$row = $m->ensureRunning('swowtech/yiqicms');
+$row = $m->ensureRunning('swowtech/zzzcms');
 echo 'started listen=' . ($row['listen'] ?? '') . "\n";

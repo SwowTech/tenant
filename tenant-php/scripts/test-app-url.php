@@ -21,7 +21,7 @@ assertEq('host local', '127.0.0.1', AppUrl::host());
 assertEq('publicBase local port', 'http://127.0.0.1:9501', AppUrl::publicBase());
 assertEq('tenant subdomain local', 'http://acme.localhost:9501', AppUrl::tenantAccessUrl('acme'));
 assertEq('tenant empty domain', '', AppUrl::tenantAccessUrl(''));
-assertEq('app open url local', 'http://acme.localhost:9501/swowtech/yiqicms/', AppUrl::appOpenUrl('swowtech/yiqicms', 'acme'));
+assertEq('app open url local', 'http://acme.localhost:9501/swowtech/zzzcms/', AppUrl::appOpenUrl('swowtech/zzzcms', 'acme'));
 
 AppUrl::reset();
 AppUrl::configure('http://localhost', 9501);

@@ -67,9 +67,14 @@ final class AppManifest
      */
     public static function webDir(array $manifest, string $identifier): string
     {
-        $relative = (string) ($manifest['web']['path'] ?? 'web');
+        $relative = trim((string) ($manifest['web']['path'] ?? 'web'), '/\\');
+        $appDir = AppPath::appDir($identifier);
+        // "." / 空：传统 PHP 应用静态资源在应用根（template/、images/ 等）
+        if ($relative === '' || $relative === '.') {
+            return $appDir;
+        }
 
-        return AppPath::appDir($identifier) . '/' . trim($relative, '/\\');
+        return $appDir . '/' . $relative;
     }
 
     /**

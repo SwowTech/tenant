@@ -231,24 +231,6 @@ final class AppProcessManager
             }
         }
 
-        $yiqiDb = null;
-        try {
-            if (\Hyperf\Context\ApplicationContext::hasContainer()) {
-                $yiqiDb = \Hyperf\Support\env('YIQICMS_DB_NAME');
-            }
-        } catch (Throwable) {
-        }
-        if (! is_string($yiqiDb) || $yiqiDb === '') {
-            $g = getenv('YIQICMS_DB_NAME');
-            $yiqiDb = $g === false ? null : $g;
-        }
-        if (is_string($yiqiDb) && $yiqiDb !== '') {
-            $out['YIQICMS_DB_NAME'] = $yiqiDb;
-        } elseif (! isset($out['YIQICMS_DB_NAME'])) {
-            // 正式环境账号通常只有宿主库权限；勿默认 zzzcms（易 1044）
-            $out['YIQICMS_DB_NAME'] = $out['DB_DATABASE'] ?? 'mineadmin';
-        }
-
         return $out;
     }
 

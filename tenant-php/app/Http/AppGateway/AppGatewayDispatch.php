@@ -64,6 +64,18 @@ final class AppGatewayDispatch
             }
         }
 
+        // ZZZCMS：宿主库按租户前缀分表 cy_{id}_zzz_*（幂等）
+        if ($identifier === \App\Service\App\ZzzcmsDbProvisioner::IDENTIFIER) {
+            try {
+                (new \App\Service\App\ZzzcmsDbProvisioner())->provisionForTenant(
+                    $tenant->id,
+                    $tenant->tablePrefix !== '' ? $tenant->tablePrefix : ('cy_' . $tenant->id . '_'),
+                );
+            } catch (\Throwable $e) {
+                return $this->plain(500, 'zzzcms db provision failed: ' . $e->getMessage());
+            }
+        }
+
         $publicBase = $this->appDomainBinding->publicBase($tenant->id, $identifier);
 
         TenantContext::set($tenant);
@@ -91,7 +103,7 @@ final class AppGatewayDispatch
                         return $this->staticService->response($identifier, $path);
                     }
 
-                    // 不再回落到 TP6（否则返回 application/json 的 Not Found，难排查）
+                    // 资源不在 web 根时：传统 PHP 站（web.path=.）已覆盖；SPA 缺失资源给明确 404
                     return $this->plain(404, 'static not found: ' . $candidate);
                 }
 
