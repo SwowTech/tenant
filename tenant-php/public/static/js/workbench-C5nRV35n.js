@@ -1,0 +1,1 @@
+import{J as r,O as e,k as t,w as a}from"./vue.runtime.esm-bundler-RpyNfluW.js";import{t as o}from"./workbench-fast-DgiuuBjk.js";import{t as _}from"./workbench-login-CFK5OWdK.js";var n=t({name:"dashboard:workbench",__name:"workbench",setup(c){return(s,u)=>(r(),a("div",null,[e(o),e(_)]))}}),f=n;export{f as default};

@@ -1,0 +1,1 @@
+import{$ as e,$t as a,J as t,R as o,w as s}from"./vue.runtime.esm-bundler-RpyNfluW.js";import{t as l}from"./_plugin-vue_export-helper-K9rsuiWd.js";var u=a({default:()=>c}),n={};function _(r,d){return t(),s("div",o({class:"h-full bg-gray-1 dark-bg-dark-6"},r.$attrs),[e(r.$slots,"default")],16)}var c=l(n,[["render",_]]);export{u as n,c as t};

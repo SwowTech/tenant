@@ -129,6 +129,11 @@ export function updateFounderTenantApp(
   return http.put(`/admin/founder/tenants/${tenantId}/apps/${enc}`, data)
 }
 
+export function removeFounderTenantApp(tenantId: number, identifier: string) {
+  const enc = encodeURIComponent(identifier)
+  return http.delete(`/admin/founder/tenants/${tenantId}/apps/${enc}`)
+}
+
 export function assignFounderTenantApp(tenantId: number, data: { identifier: string, version: string, years?: number, months?: number }) {
   return http.post(`/admin/founder/tenants/${tenantId}/apps`, data)
 }

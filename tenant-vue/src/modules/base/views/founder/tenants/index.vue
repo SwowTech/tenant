@@ -8,6 +8,7 @@ import {
   getFounderAssignableApps,
   getFounderTenantApps,
   getFounderTenants,
+  removeFounderTenantApp,
   reprovisionFounderTenant,
   setFounderTenantAppStatus,
   suggestFounderDomain,
@@ -502,6 +503,26 @@ async function toggleAttached(row: FounderTenantAppVo) {
   }
 }
 
+async function removeAttached(row: FounderTenantAppVo) {
+  if (!assignTenant.value?.id) {
+    return
+  }
+  try {
+    await msg.confirm(t('founderTenants.msgRemoveConfirm', { app: row.identifier }))
+  }
+  catch {
+    return
+  }
+  const res: any = await removeFounderTenantApp(assignTenant.value.id, row.identifier)
+  if (res.code === ResultCode.SUCCESS) {
+    msg.success(t('founderTenants.msgRemoved'))
+    const listRes: any = await getFounderTenantApps(assignTenant.value.id)
+    if (listRes.code === ResultCode.SUCCESS) {
+      attachedApps.value = listRes.data || []
+    }
+  }
+}
+
 async function enterTenant(row: FounderTenantVo) {
   if (row.status !== 1) {
     msg.warning(t('founderTenants.msgNeedActiveEnter'))
@@ -730,13 +751,16 @@ onMounted(loadData)
               {{ row.status === 1 ? (row.expired ? t('founderTenants.expired') : t('founderTenants.enable')) : t('founderTenants.disable') }}
             </template>
           </el-table-column>
-          <el-table-column :label="t('crud.operation')" width="150">
+          <el-table-column :label="t('crud.operation')" width="210">
             <template #default="{ row }">
               <el-button link type="primary" @click="openEditAttached(row)">
                 {{ t('founderTenants.modify') }}
               </el-button>
               <el-button link type="primary" @click="toggleAttached(row)">
                 {{ row.status === 1 ? t('founderTenants.disable') : t('founderTenants.enable') }}
+              </el-button>
+              <el-button link type="danger" @click="removeAttached(row)">
+                {{ t('founderTenants.remove') }}
               </el-button>
             </template>
           </el-table-column>

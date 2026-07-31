@@ -1,0 +1,1 @@
+function c(t,r){const s=typeof t?.meta?.title=="string"?t.meta.title:"",i=typeof t?.meta?.i18n=="string"?t.meta.i18n.trim():"",n=typeof t?.name=="string"?t.name.trim():"",a=[i,n?`menu.${n}`:""].filter(Boolean);for(const o of a){const e=r(o);if(e&&e!==o)return e}return s}export{c as t};

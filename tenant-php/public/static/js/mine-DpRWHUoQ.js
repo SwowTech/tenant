@@ -1,0 +1,1 @@
+import{J as e,O as a,k as t,w as _}from"./vue.runtime.esm-bundler-RpyNfluW.js";import{t as r}from"./WelcomeInstalledApps-B7zbU1L2.js";var n={class:"mine-layout"},s=t({name:"apps:mine",__name:"index",setup(o){return(p,l)=>(e(),_("div",n,[a(r)]))}}),d=s;export{d as default};

@@ -1,0 +1,1 @@
+import{J as e,k as r,w as a}from"./vue.runtime.esm-bundler-RpyNfluW.js";var t={class:"my-1 h-[1px] w-full bg-gray-1 dark-bg-dark-2"},_=r({name:"MDropdownDivider",__name:"divider",setup(d){return(i,o)=>(e(),a("div",t))}}),n=_;export{n as default};

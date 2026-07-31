@@ -365,6 +365,7 @@ founderTenants:
   forever: 永久
   expired: 已過期
   modify: 修改
+  remove: 刪除
   selectApps: 選擇要附加的應用
   licensePeriod: 授權有效期
   licensePeriodRecalc: 授權有效期（從現在起重新計算）
@@ -396,6 +397,8 @@ founderTenants:
   msgDisabled: 已停用
   msgReprovisionOk: 重試開通成功
   msgAssignOk: 附加成功
+  msgRemoved: 已刪除附加應用
+  msgRemoveConfirm: 確定從該租戶刪除應用「{app}」？僅移除安裝記錄與域名綁定，不會刪除伺服器上的應用包。
   msgNeedActiveAssign: 請先開通或啓用租戶後再附加應用
   msgNeedActiveEnter: 請先開通或啓用租戶後再進入
   msgSelectApp: 請選擇要附加的應用

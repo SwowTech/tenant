@@ -99,6 +99,14 @@ final class AppController extends AbstractController
         ));
     }
 
+    #[DeleteMapping(path: 'tenants/{id:\d+}/apps/{identifier:.+}')]
+    public function removeApp(int $id, string $identifier): Result
+    {
+        $this->service->removeTenantApp($id, urldecode($identifier));
+
+        return $this->success();
+    }
+
     /**
      * 全平台应用域名列表：GET /admin/founder/app-domains?tenant_id=&identifier=
      */

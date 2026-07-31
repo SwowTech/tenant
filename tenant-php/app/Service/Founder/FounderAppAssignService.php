@@ -256,6 +256,32 @@ final class FounderAppAssignService
     }
 
     /**
+     * 从租户移除已附加应用（删安装记录 + 解绑该应用域名；不删磁盘 apps/ 包）.
+     */
+    public function removeTenantApp(int $tenantId, string $identifier): void
+    {
+        $identifier = $this->normalizeIdentifier($identifier);
+        $prefix = $this->requireActiveTenantPrefix($tenantId);
+        $this->dynamicTablePrefix->apply($prefix);
+        try {
+            $this->ensureInstalledAppSchema();
+            $existing = Db::table('tenant_installed_app')->where('identifier', $identifier)->first();
+            if ($existing === null) {
+                throw new BusinessException(ResultCode::NOT_FOUND, '该租户未附加此应用');
+            }
+            Db::table('tenant_installed_app')->where('identifier', $identifier)->delete();
+        } finally {
+            $this->dynamicTablePrefix->reset();
+        }
+
+        try {
+            $this->appInstallService->unbindDomain($tenantId, $identifier);
+        } catch (Throwable) {
+            // 无域名绑定或表不存在时忽略
+        }
+    }
+
+    /**
      * 修改已附加应用：状态 / 授权有效期（年+月，0+0=永久）.
      *
      * @return array{identifier:string,status:int,expires_at:?string,expires_label:string,expired:bool}

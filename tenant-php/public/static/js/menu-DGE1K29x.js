@@ -1,0 +1,1 @@
+import{yt as e}from"./index-IDJJReuv.js";function u(){return e().get("/admin/menu/list")}function r(t){return e().post("/admin/menu",t)}function i(t,n){return e().put(`/admin/menu/${t}`,n)}function m(t){return e().delete("/admin/menu",{data:t})}export{i,m as n,u as r,r as t};

@@ -365,6 +365,7 @@ founderTenants:
   forever: Forever
   expired: Expired
   modify: Modify
+  remove: Remove
   selectApps: Select apps to assign
   licensePeriod: License period
   licensePeriodRecalc: License period (recalculated from now)
@@ -396,6 +397,8 @@ founderTenants:
   msgDisabled: Disabled
   msgReprovisionOk: Re-provision succeeded
   msgAssignOk: Assigned successfully
+  msgRemoved: App detached from tenant
+  msgRemoveConfirm: Remove app "{app}" from this tenant? This only deletes the install record and domain bindings, not the app package on disk.
   msgNeedActiveAssign: Enable or provision the tenant before assigning apps
   msgNeedActiveEnter: Enable or provision the tenant before entering
   msgSelectApp: Please select apps to assign
