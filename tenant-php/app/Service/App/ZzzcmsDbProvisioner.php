@@ -49,6 +49,36 @@ final class ZzzcmsDbProvisioner
                 // 演示数据冲突可忽略
             }
         }
+
+        // 子目录部署：把根路径 /upload|/images 改成 /swowtech/zzzcms/...
+        $this->rewritePublicPaths($pdo, $pre);
+    }
+
+    /**
+     * 演示数据多为 /upload/...；包装路由下需带 SITE_PATH.
+     */
+    private function rewritePublicPaths(PDO $pdo, string $pre): void
+    {
+        $site = '/swowtech/zzzcms';
+        $safePre = str_replace(['%', '_'], ['\\%', '\\_'], $pre);
+        $tables = $pdo->query("SHOW TABLES LIKE '{$safePre}%'")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($tables as $table) {
+            $cols = [];
+            foreach ($pdo->query('SHOW COLUMNS FROM `' . str_replace('`', '``', $table) . '`') as $c) {
+                $type = strtolower((string) $c['Type']);
+                if (str_contains($type, 'char') || str_contains($type, 'text') || str_contains($type, 'blob')) {
+                    $cols[] = $c['Field'];
+                }
+            }
+            foreach ($cols as $col) {
+                $t = str_replace('`', '``', $table);
+                $c = str_replace('`', '``', $col);
+                $pdo->exec("UPDATE `{$t}` SET `{$c}` = REPLACE(`{$c}`, '/swowtech/yiqicms', '{$site}') WHERE `{$c}` LIKE '%/swowtech/yiqicms%'");
+                $pdo->exec("UPDATE `{$t}` SET `{$c}` = CONCAT('{$site}', `{$c}`) WHERE `{$c}` LIKE '/upload/%' AND `{$c}` NOT LIKE '{$site}%'");
+                $pdo->exec("UPDATE `{$t}` SET `{$c}` = CONCAT('{$site}', `{$c}`) WHERE `{$c}` LIKE '/images/%' AND `{$c}` NOT LIKE '{$site}%'");
+                $pdo->exec("UPDATE `{$t}` SET `{$c}` = REPLACE(`{$c}`, '/upload/', '{$site}/upload/') WHERE `{$c}` LIKE '%/upload/%' AND `{$c}` NOT LIKE '%{$site}/upload/%'");
+            }
+        }
     }
 
     /** @deprecated 使用 provisionForTenant */

@@ -1,0 +1,258 @@
+<?php
+include '../inc/zzz_class.php';
+  $GLOBALS['err']='0';
+  $act =getform("act","both");
+   if (check_file('install.lock')) error('很抱歉，程序已安装,如需重新安装请删除install/install.lock');
+   if (conf('isinstall')==1 && empty($act)) error('很抱歉，程序已安装,如需重新安装请修改config配置信息,isinstall=>0');
+	switch ($act){
+		case "step1":
+			$tpl=	template_parse(load_file('tpl/step1.tpl'));
+			break;	
+		case "step2":
+			$tpl=	template_parse(load_file('tpl/step2.tpl'));
+			break;	
+		case "step3":
+			$admin_pass=md5_16($_COOKIE['admin_pass']);
+			$question =isset($_COOKIE['question']) ? $_COOKIE['question']: '';
+			$answer =isset($_COOKIE['answer']) ? $_COOKIE['answer'] : '';
+			db_update("language",'lid=1',array('sitetitle'=>$_COOKIE['sitetitle'],'siteurl'=>$_COOKIE['siteurl'],'sitewapurl'=>$_COOKIE['siteurl'].'/wap'));	db_update("user",'uid=1',array('username'=>$_COOKIE['admin_name'],'password'=>$admin_pass,'question'=>$question,'answer'=>$answer));
+			save_config(array('isinstall'=>'1'));
+			$tpl=	template_parse(load_file('tpl/step3.tpl'));
+			break;	
+		case "step4":
+			$tpl=	template_parse(load_file('tpl/step4.tpl'));
+			break;		
+		case "step5":
+			db_update("language",'lid=1',array('sitepclogo'=>SITE_PATH."images/logo.png",'sitewaplogo'=>SITE_PATH."images/waplogo.png",'copyright'=> '版权所有 ©2015-'.date('Y').' zzcms.com'));
+			create_file('install.lock','zzzcms安装锁定文件，删除后方可再次安装！');
+			$tpl=	template_parse(load_file('tpl/step5.tpl'));				
+			break;
+		case "install":
+			install();
+			break;
+		case "drop":
+			drop_mysql();
+			break;
+		case "progress":
+			progress();
+			break;	
+		case "testdata":
+			testdata();
+			break;	
+		case"check_mysql":
+			check_mysql();
+			break;			
+		default:			
+			$tpl=	template_parse(load_file('tpl/index.tpl'));
+	}
+	if(isset($tpl)){
+		file_put_contents(RUN_DIR.'tmp.php', $tpl);
+		require RUN_DIR.'tmp.php';
+		//unlink(RUN_DIR.'tmp.php'); 
+	}
+	function num_ch($num,$yes,$no){
+		return $num ? $yes : $no;
+	}
+	function check_disable(){
+		$string=ini_get("disable_functions");
+		if(ifstrin($string,'opendir')){
+			$GLOBALS['err']='1';
+			return '<b class="red">不支持</b>';
+		}else{
+			return '<span class="green">支持</span>';
+		}
+	}
+	function check_chinese(){
+		$string=togbk(DOC_DIR);
+		if(ifch($string)){
+			$GLOBALS['err']='1';
+			return '<b  class="red">网站路径中不能含有中文！</b>';
+		}else{
+			return '<span class="green">'.DOC_DIR.'</span>';
+		}
+	}
+	function check_version(){
+		if (PHP_VERSION < '5.3') {
+			$GLOBALS['err']='1';
+			return '<b  class="red">'.PHP_VERSION.'不满足</b>';
+		}else{
+		   return '<span class="green">'.PHP_VERSION.'</span>';
+		}
+	}
+	function check_extensions($type){
+		$able=get_loaded_extensions();
+		foreach ($able as $key=>$value) {
+			if(strtolower($value)==$type){
+				return 1;
+			}
+		}
+		return 0;
+	}
+	
+	function drop_mysql(){
+		$db=conf('db');
+		$dbname=$db['name'];$host=$db['host'];$port=$db['port']; $user=$db['user'];$password=$db['password'];
+		$attr = array(PDO::ATTR_TIMEOUT => 1);
+		$link = new PDO("mysql:host=$host;port=$port;dbname=$dbname", $user, $password, $attr);
+		$query= $link->query('SHOW TABLES');
+		$query->setFetchMode(PDO::FETCH_NUM);
+		$arrlist = $query->fetchAll();
+		foreach ($arrlist as $val){
+			$link->exec("drop table $val[0]");
+		}
+		create_mysql();
+		phpgo('?act=step3');
+	}
+
+	function create_mysql($dbname='',$host='',$port='',$user='',$password=''){
+		if (empty($dbname)){
+			$db=conf('db');
+			$dbname=$db['name'];$host=$db['host'];$port=$db['port']; $user=$db['user'];$password=$db['password'];
+		}		
+		$attr = array(PDO::ATTR_TIMEOUT => 1);
+		$link = new PDO("mysql:host=$host;port=$port;dbname=$dbname", $user, $password, $attr);
+			$link->exec("set names utf8");
+			$link->exec("CREATE TABLE `zzz_language`(`lid`int(11)NOT NULL AUTO_INCREMENT,`l_name`varchar(255)DEFAULT NULL,`l_path`varchar(255)DEFAULT NULL,`l_order`int(11)DEFAULT NULL,`l_onoff`int(1)DEFAULT NULL,`l_alias`varchar(255)DEFAULT NULL,`pctemplate`varchar(255)DEFAULT NULL,`waptemplate`varchar(255)DEFAULT NULL,`pchtmlpath`varchar(255)DEFAULT NULL,`waphtmlpath`varchar(255)DEFAULT NULL,`sitetitle`varchar(255)DEFAULT NULL,`additiontitle`varchar(255)DEFAULT NULL,`sitepclogo`varchar(255)DEFAULT NULL,`sitewaplogo`varchar(255)DEFAULT NULL,`siteurl`varchar(255)DEFAULT NULL,`sitewapurl`varchar(255)DEFAULT NULL,`companyname`varchar(255)DEFAULT NULL,`companyaddress`varchar(255)DEFAULT NULL,`companymappoint`varchar(255)DEFAULT NULL,`companypostcode`varchar(255)DEFAULT NULL,`companycontact`varchar(255)DEFAULT NULL,`companytel`varchar(255)DEFAULT NULL,`companymobile`varchar(255)DEFAULT NULL,`companyfax`varchar(255)DEFAULT NULL,`companyemail`varchar(255)DEFAULT NULL,`companyicp`varchar(255)DEFAULT NULL,`statisticalcode`longtext,`copyright`longtext,`sitekeys`longtext,`sitedesc`longtext,`isdefault`int(11)DEFAULT NULL,`qq`varchar(255)DEFAULT NULL,`weixin`varchar(255)DEFAULT NULL,PRIMARY KEY(`lid`))ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=2");
+			$link->exec("INSERT INTO `zzz_language` (`lid`,`l_name`, `l_path`, `l_order`, `l_onoff`, `l_alias`, `pctemplate`, `waptemplate`, `pchtmlpath`, `waphtmlpath`, `sitetitle`, `additiontitle`, `sitepclogo`, `sitewaplogo`, `siteurl`, `sitewapurl`, `companyname`, `companyaddress`, `companymappoint`, `companypostcode`, `companycontact`, `companytel`, `companymobile`, `companyfax`, `companyemail`, `companyicp`, `statisticalcode`, `copyright`, `sitekeys`, `sitedesc`, `isdefault`, `qq`, `weixin`) VALUES
+	( 1,'中文', '', 0, 1, 'ch', 'cn2016/', 'cn2016/', 'html/', 'html/', 'zzzcms-PHP建站系统', 'zzzcms', '/images/logo.png', '/images/waplogo.png', 'http://localhost/', 'http://localhost/wap', '公司名', '', '116.404309,39.905589', '', '管理员', '88888888', '13888888888', '', '', '', '', '版权所有 ?2015-{zzz:Y} zzcms.com', '', '', 1, '', '')");
+			$link->exec("CREATE TABLE IF NOT EXISTS`zzz_user`(`uid`int(11)NOT NULL AUTO_INCREMENT,`u_gid`int(11)DEFAULT NULL,`u_lid`int(11)DEFAULT NULL,`u_onoff`int(1)DEFAULT NULL,`u_order`int(11)DEFAULT NULL,`sex`varchar(255)DEFAULT NULL,`username`varchar(255)DEFAULT NULL,`password`varchar(255)DEFAULT NULL,`question`varchar(255)DEFAULT NULL,`answer`varchar(255)DEFAULT NULL,`regtime`datetime DEFAULT NULL,`truename`varchar(255)DEFAULT NULL,`face`varchar(255)DEFAULT NULL,`province`varchar(255)DEFAULT NULL,`city`varchar(255)DEFAULT NULL,`district`varchar(255)DEFAULT NULL,`address`varchar(255)DEFAULT NULL,`post`varchar(255)DEFAULT NULL,`tel`varchar(255)DEFAULT NULL,`mobile`varchar(255)DEFAULT NULL,`email`varchar(255)DEFAULT NULL,`qq`varchar(255)DEFAULT NULL,`u_desc`longtext,`adminrand`varchar(255)DEFAULT NULL,`lastlogintime`varchar(255)DEFAULT NULL,`lastloginip`varchar(255)DEFAULT NULL,`logincount`int(11)DEFAULT NULL,`sysinfo`varchar(255)DEFAULT NULL,`points`int(11)DEFAULT NULL,`balance`int(11)DEFAULT NULL,PRIMARY KEY(`uid`))ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=2");
+			$link->exec("INSERT INTO`zzz_user`(`uid`,`u_gid`,`u_lid`,`u_onoff`,`u_order`,`sex`,`username`,`password`,`question`,`answer`,`regtime`,`truename`,`face`,`province`,`city`,`district`,`address`,`post`,`tel`,`mobile`,`email`,`qq`,`u_desc`,`adminrand`,`lastlogintime`,`lastloginip`,`logincount`,`sysinfo`,`points`,`balance`)VALUES
+	(1,1,1,1,0,'男','admin','49ba59abbe56e057','2342','452435345','2018-04-13 13:51:19','创始人','face01.png','','','','','','','','','','','','','',0,'',0,0)");
+			$link =NULL;
+	}
+
+	function check_mysql(){
+		$host=getform("host","post");
+		$port=getform("port","post");
+		$dbname=getform("name","post");
+		$user=getform("user","post");
+		$password=getform("password","post");
+		try {
+			$attr = array(PDO::ATTR_TIMEOUT => 1);
+			$trypdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname", $user, $password, $attr);
+		} catch (PDOException $e) {
+			$errno=$e->getCode();
+			switch ($errno){
+				case 1024:  die ($errno.':连接数据库失败,读取数据表失败请检查是否拼写错误。');
+				case 1026:  die ($errno.':写文件错误。');
+				case 1030:  die ($errno.':可能是服务器不稳定。（具体原因不是很清楚）');        
+				case 1037:  die ($errno.':系统内存不足，请重启数据库或重启服务器。');
+				case 1044:  die ($errno.':数据库用户权限不足，请联系空间商解决。');
+				case 1045:  die ($errno.':连接数据库失败,请检查数据库账户密码是否正确');
+				case 1049:  die ('测试成功，数据表不存在将创建，可以安装');     
+				case 1054:  die ($errno.':连接数据库失败,写入数据表失败请检查写入字段');
+				case 1064:  die ($errno.':数据库执行语句有误，请检查排序字段');
+				case 1130:  die ($errno.':连接数据库失败，没有连接数据库的权限。');   
+				case 1235:  die ($errno.':MySQL版本过低，不具有本功能。');  
+				case 2002:  die ($errno.':服务器端口不对，请咨询空间商正确的端口。');      
+				case 2003:  die ($errno.':连接数据库服务器失败,MySQL 服务没有启动，请启动该服务。');
+				case 2008:  die ($errno.':没有足够的内存存储全部结果');				
+			    default: die($e->getMessage());
+			}
+		}
+		echo('测试成功，数据表已存在，可以安装');		
+}
+	function install(){	
+		setcookie('sitetitle',getform("sitetitle","post"));
+		setcookie('siteurl',getform("siteurl","post"));
+		$sitepath=getform("sitepath","post");
+		if(empty($sitepath))		$sitepath='/';
+		if(cright($sitepath)!='/')	$sitepath.='/';
+		$adminpath=getform("adminpath","post",'nul');
+		if(cright($adminpath)!='/') $adminpath.='/';
+        $prefix=getform("prefix","post",'nul');
+		if(cright($prefix)!='_') $prefix.='_';    
+		$dbtype=getform("dbtype","post",'sel');		
+		$sqlitepath=getform("sqlitepath","post");
+		$sqlitename=getform("sqlitename","post");
+		$accesspath=getform("accesspath","post");
+		$accessname=getform("accessname","post");
+		$host=getform("host","post");
+		$port=getform("port","post");
+		$dbname=getform("name","post");
+		$user=getform("user","post");
+		$password=getform("password","post");
+		setcookie('admin_name',getform("admin_name","post"));
+		setcookie('admin_pass',getform("admin_pass","post"));
+		setcookie('question',getform("question","post"));
+		setcookie('answer',getform("answer","post"));	
+		$oldpath=conf('adminpath'); if(empty($oldpath) || !file_exists(SITE_DIR.$oldpath)) $oldpath='admin/';
+		if(!file_exists(SITE_DIR.$oldpath)) back('未找到默认管理目录，请手动修改管理目录名改为admin');
+	switch 	($dbtype){
+		case 'access' :
+		copy_file (SITE_DIR.'install/data/access.data',SITE_DIR.$accesspath.$accessname);
+		save_config(array('sitepath'=>$sitepath,'adminpath'=>$adminpath,'prefix'=>$prefix,'type'=>$dbtype,'accesspath'=>$accesspath,'accessname'=>$accessname));
+		break;	
+		case 'sqlite' :
+		copy_file (SITE_DIR.'install/data/sqlite.data',SITE_DIR.$sqlitepath.$sqlitename);
+		save_config(array('sitepath'=>$sitepath,'adminpath'=>$adminpath,'prefix'=>$prefix,'type'=>$dbtype,'sqlitepath'=>$sqlitepath,'sqlitename'=>$sqlitename));
+		break;	
+		case 'mysql'  :
+		// 与宿主同库：不单独 CREATE DATABASE（正式环境常无建库权限，也不需要 zzzcms 库）
+		try {
+			$attr = array(PDO::ATTR_TIMEOUT => 5);
+			$trypdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname", $user, $password, $attr);			
+			$result = $trypdo->query("SHOW TABLES LIKE 'zzz_language'");
+			$row = $result->fetchAll();
+			if(count($row)>0){						
+				save_config(array('sitepath'=>$sitepath,'adminpath'=>$adminpath,'prefix'=>$prefix,'type'=>$dbtype,'host'=>$host,'port'=>$port,'name'=>$dbname,'user'=>$user,'password'=>$password));
+			  	confirm('Mysql数据库已存在，是否删除重建？\r\n【确定】删除，数据库中所有数据将被初始化！\r\n【取消】返回，建议备份。','?act=drop','-1');exit();;
+			}
+		} catch (Exception $e) {
+			back('连接宿主数据库失败，请填写 .env 中的 DB_DATABASE（勿单独创建 zzzcms 库）: '.$e->getMessage());
+		}
+		$trypdo	=NULL;			
+		save_config(array('sitepath'=>$sitepath,'adminpath'=>$adminpath,'prefix'=>$prefix,'type'=>$dbtype,'host'=>$host,'port'=>$port,'name'=>$dbname,'user'=>$user,'password'=>$password));
+		create_mysql($dbname,$host,$port,$user,$password);			
+		break;
+		default:
+		back ('很抱歉，请选择正确的数据库类型');
+	}
+	if ($adminpath!=$oldpath){		
+		if(!rename(SITE_DIR.$oldpath,SITE_DIR.$adminpath)){
+			jsgo('文件夹权限不足，无法完成安装！','?act=step2');
+		}
+	}
+    $arr = load_file( SITE_DIR.'js/zzzcms.js' );
+	$arr = preg_replace( "/SITE_PATH='(\S*?)'/i",  "SITE_PATH='" . $sitepath . "'", $arr );
+    $arr = preg_replace( "/PRE_FIX='(\S*?)'/i",  "PRE_FIX='" . $prefix . "'", $arr );    
+	file_put_contents( SITE_DIR.'js/zzzcms.js', $arr );	
+	phpgo('?act=step3');
+}
+
+function progress(){
+	$db=conf('db');
+	if($db['type']=='mysql'){
+		$sql = file_get_contents('data/mysql.data');
+		$data = explode(';', $sql);
+		$count=count($data);
+		$d=$_SERVER['db'];
+		 foreach ($data as $value) {
+			if ($value){
+				$d->exec($value);
+			}
+		}
+		echo tojson(array('count'=>$count,"start"=>0,"to"=>$count));
+	}
+	else{
+		echo tojson(array('count'=>1,"start"=>1,"to"=>1));
+	}
+}
+function testdata(){
+		$db=conf('db');
+		if($db['type']=='access'){
+			$sql = file_get_contents('data/test_gbk.data');	
+		}else{
+			$sql = file_get_contents('data/test_utf8.data');	
+		}
+		$data = explode(';'.PHP_EOL, $sql);
+		$count=count($data);
+		$d=$_SERVER['db'];
+		 foreach ($data as $value) {
+			if ($value){
+				if(SITE_PATH!='/') $value=str_replace('/upload/',SITE_PATH.'upload/',$value);
+				$d->exec($value);
+			}
+		}
+		echo tojson(array('count'=>$count,"start"=>0,"to"=>$count));
+	}

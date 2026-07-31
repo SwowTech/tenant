@@ -4,6 +4,8 @@
 !/swowtech/
 !/swowtech/demo/
 !/swowtech/demo/**
+!/swowtech/zzzcms/
+!/swowtech/zzzcms/**
 **/vendor/
 **/storage/
 !/swowtech/demo/storage/
@@ -12,3 +14,4 @@
 **/runtime/**
 **/.env
 !**/.env.example
+!**/.gitkeep

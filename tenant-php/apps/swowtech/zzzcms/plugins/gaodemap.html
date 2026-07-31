@@ -1,0 +1,87 @@
+<script>
+    var baidumapAK = '{conf:baidumapAK}';
+    if (baidumapAK == '') {
+       $("#dituContentn").html("请先设置高德地图KEY，<a href='https://console.amap.com/dev/key/app' target='_blank'>");
+    } else {
+        document.write("<script src=\"//webapi.amap.com/maps?v=1.4.15&key={conf:baidumapAK}\">"+"</scr"+"ipt>");
+    }
+</script>
+
+<link rel="stylesheet" href="https://cache.amap.com/lbs/static/main1119.css"/>
+<style type="text/css"> 
+    .main-map{position:relative;}
+    .main-map .info{border:solid 1px silver;}
+    div.info-top{position:relative;background:none repeat scroll 0 0 #F9F9F9;border-bottom:1px solid #CCC;border-radius:5px 5px 0 0;}
+    div.info-top div{display:inline-block;color:#333333;font-size:14px;font-weight:bold;line-height:31px;padding:0 10px;}
+    div.info-top img{position:absolute;top:10px;right:10px;transition-duration:0.25s;width:auto;}
+    div.info-top img:hover{box-shadow:0px 0px 5px #000;}
+    div.info-middle{font-size:12px;padding:6px;line-height:20px;}
+    div.info-bottom{height:0px;width:100%;clear:both;text-align:center;}
+    div.info-bottom img{position:relative;z-index:104;width:auto;}
+    .main-map span{margin-left:5px;font-size:11px;}
+    .info-middle img{margin-bottom:6px;width:auto;}
+    .amap-info>div{width:100%;margin-left:0px;}
+    .pp_gallery ul a img{width:50px;}
+    a.pp_previous,a.pp_next,#hoverNav a{transition:0s;}
+</style>
+<div class="map">
+    <div class="main-map">
+        <div style="width:100%;height:400px;font-size:12px" id="mapContainer"></div>
+        <div class="button-group">
+            <input id="en" type="button" class="button" value="Display English" />
+            <input id="zh_en" type="button" class="button" value="展示中文和英文" />
+            <input id="zh_cn" type="button" class="button" value="展示中文" />
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    
+    //地图初始化时，在地图上添加一个marker标记,鼠标点击marker可弹出自定义的信息窗体
+    function bMapTransQQMap(lng, lat) {
+        let x_pi = 3.14159265358979324 * 3000.0 / 180.0;
+        let x = lng - 0.0065;
+        let y = lat - 0.006;
+        let z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * x_pi);
+        let theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * x_pi);
+        let lngs = z * Math.cos(theta);
+        let lats = z * Math.sin(theta);
+        return [lngs,lats]
+    }
+
+    gaodepoint=bMapTransQQMap({zzz:baidupoint1})
+
+    if(gaodepoint[0]){
+        var map = new AMap.Map("mapContainer", {
+            resizeEnable: true,
+            center:gaodepoint,
+            zoom: 14
+        });
+        
+        var infoWindowContent ='<div style="position: absolute; bottom: 0px;width:300px;height:100px; left: 0px;"><div class="bottom-center amap-info-contentContainer"><div class="info"><div class="info-top"><div>{zzz:company}</div><img src="https://webapi.amap.com/images/close2.gif" onclick=closeInfoWindow()></div><div class="info-middle" style="background-color: white;">地址 :{zzz:address}<br>电话 :{zzz:tel}</div><div class="info-bottom" style="position: relative; top: 0px;left: 40px; margin: 0px auto;"><img src="https://webapi.amap.com/images/sharp.png"></div></div></div></div>';
+      
+        var infoWindow = new AMap.InfoWindow({
+            isCustom: true,  //使用自定义窗体            
+            offset: new AMap.Pixel(0, -30),
+            content: infoWindowContent
+        });       
+        infoWindow.open(map,gaodepoint);
+        var marker = new AMap.Marker({position: gaodepoint, map});
+
+        marker.on('click', function(){
+            infoWindow.open(map,gaodepoint);
+        });
+
+        ['en', 'zh_en', 'zh_cn'].forEach(function (btn) {
+            var button = document.getElementById(btn);
+            AMap.event.addDomListener(button, 'click', clickListener)
+        });
+
+        function clickListener() {
+            map.setLang(this.id);
+        }
+        function closeInfoWindow() {
+            map.clearInfoWindow();
+        }
+        map.setLang('cn');
+    }
+</script>

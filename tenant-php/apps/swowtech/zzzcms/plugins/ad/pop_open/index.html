@@ -1,0 +1,40 @@
+
+<style>
+    #popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: [width]px;
+      height: [height]px;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+	#close-btn {
+      position: absolute;
+	  top: 79px;
+     right: 1px;
+      width: 30px;
+      height: 30px;
+      background-color: #f00;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+
+  <div id="popup">
+    <button id="close-btn">X</button>
+    <a href="[link]" target="_blank">
+      <img src="[pic]" alt="[title]" width="[width]">
+    </a>
+  </div>
+  <script>
+    // 延迟 3 秒弹出图片
+    setTimeout(function () {
+        $("#popup").fadeIn(500)
+    }, 3000);
+    $("#close-btn").click(function(){
+        $("#popup").fadeOut(500)
+    })
+  </script>
