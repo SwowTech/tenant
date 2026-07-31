@@ -1499,6 +1499,47 @@ function conf( $str ) {
 	}
 }
 
+/**
+ * 包装路由下把根路径媒体 URL 改写到 SITE_PATH（/upload → /swowtech/zzzcms/upload）.
+ */
+function site_fix_html_paths( $html ) {
+	if ( ! is_string( $html ) || $html === '' ) {
+		return $html;
+	}
+	$site = defined( 'SITE_PATH' ) ? rtrim( SITE_PATH, '/' ) : '';
+	if ( $site === '' || $site === '/' ) {
+		return $html;
+	}
+	$html = str_replace( '/swowtech/yiqicms/', $site . '/', $html );
+	$html = preg_replace( '#(?<=["\'(=])/upload/#', $site . '/upload', $html ) ?? $html;
+	$html = preg_replace( '#(?<=["\'(=])/images/#', $site . '/images', $html ) ?? $html;
+	$html = str_replace( $site . $site . '/', $site . '/', $html );
+
+	return $html;
+}
+
+function site_media_url( $url ) {
+	if ( ! is_string( $url ) || $url === '' ) {
+		return $url;
+	}
+	if ( preg_match( '#^https?://#i', $url ) ) {
+		return $url;
+	}
+	$site = defined( 'SITE_PATH' ) ? rtrim( SITE_PATH, '/' ) : '';
+	if ( $site === '' || $site === '/' ) {
+		return $url;
+	}
+	$url = str_replace( '/swowtech/yiqicms/', $site . '/', $url );
+	if ( str_starts_with( $url, $site . '/' ) ) {
+		return $url;
+	}
+	if ( str_starts_with( $url, '/upload/' ) || str_starts_with( $url, '/images/' ) ) {
+		return $site . $url;
+	}
+
+	return $url;
+}
+
 // 不安全的获取 IP 方式，在开启 CDN 的时候，如果被人猜到真实 IP，则可以伪造。
 function ip() {
 	$ip = '127.0.0.1';

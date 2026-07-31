@@ -197,7 +197,7 @@ if (!defined('TPL_DIR')){
 	$zcontent = $parser->parserCommom($zcontent); // 解析模板
 	$zcontent=str_replace('[login:type]',$logintype,$zcontent);
 	$zcontent=str_replace('[login:backurl]',$backurl,$zcontent);
-	echo $zcontent;	
+	echo site_fix_html_paths($zcontent);	
  }elseif($conf['iscache']==1){
 	$filename=$location.((G('sid')>0) ? '/'.G('sid') : G('cname')). ((G('aid')) ? '/'.G('aid') : '').((G('bid')) ? '/'.G('bid') : '').((G('cid')) ? '/'.G('cid') : ''). ((G('page')) ? '_'.G('page') : ''). '.tpl' ; 
 	//echop($filename);
@@ -210,10 +210,11 @@ if (!defined('TPL_DIR')){
 		$zcontent = load_file($tplfile,$location);		
 		$parser = new ParserTemplate();
 		$zcontent = $parser->parserCommom($zcontent); // 解析模板
+		$zcontent = site_fix_html_paths($zcontent);
 		create_file($cachefile, $zcontent);
 		echo $zcontent;	
 	}else{
-		echo load_file($cachefile);	
+		echo site_fix_html_paths(load_file($cachefile));	
 	}
 }elseif( $location=='sitexml'){	
 	$htmlpath = SITE_PATH. 'sitexml.xml';
@@ -235,7 +236,7 @@ if (!defined('TPL_DIR')){
 	$zcontent = load_file($tplfile,$location);
 	$parser = new ParserTemplate();
 	$zcontent = $parser->parserCommom($zcontent); // 解析模板
-	echo $zcontent;
+	echo site_fix_html_paths($zcontent);
  }elseif($conf['runmode']==1){
 	$location=='index' ? $url='index' : $url=$_SERVER['REQUEST_URI'];
     if (SITE_PATH!='/'){
@@ -257,6 +258,7 @@ if (!defined('TPL_DIR')){
 	$zcontent = load_file($tplfile,$location);
 	$parser = new ParserTemplate();
 	$zcontent = $parser->parserCommom($zcontent); // 解析模板		
+	$zcontent = site_fix_html_paths($zcontent);
 	create_file($htmlfile, $zcontent);
 	phpgo($htmlpath);
 }else{

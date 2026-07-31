@@ -1,5 +1,6 @@
 <?php
 require '../../inc/zzz_class.php';
+header('Content-Type: application/javascript; charset=utf-8');
 if(!conf('usermark')) die('');
 $backurl=safe_url(getform('backurl','get'));
 $path =is_mobile() ?  SITE_PATH.'wap/' :  SITE_PATH;

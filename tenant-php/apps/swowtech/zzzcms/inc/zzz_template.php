@@ -652,7 +652,7 @@ class ParserTemplate {
 						$zcontent = str_replace( $matches[ 0 ][ $i ], G('cname'), $zcontent );
 						break;	
 					case 'userlogin':
-						$zcontent = str_replace( $matches[ 0 ][ $i ], "<script language='javascript' src='" . PLUG_PATH . "template/login.php?backurl=".G( 'backurl' )."''></script>", $zcontent );
+						$zcontent = str_replace( $matches[ 0 ][ $i ], "<script language='javascript' src='" . PLUG_PATH . "template/login.php?backurl=" . rawurlencode( (string) G( 'backurl' ) ) . "'></script>", $zcontent );
 						break;
 					case 'gbookform':
 						$zcontent = str_replace( $matches[ 0 ][ $i ], "<iframe width='100%' height='100%' frameborder='0'  style='min-height:500px;' src='" . PLUG_PATH . "template/gbook.php'></iframe>", $zcontent );

@@ -29,6 +29,9 @@ final class ZzzcmsDbProvisioner
         $pre = self::zzzPrefix($tablePrefix, $tenantId);
         $pdo = $this->pdoWithDatabase();
         if ($this->hasCoreTable($pdo, $pre)) {
+            // 已建表也修正旧演示数据路径（/upload → /swowtech/zzzcms/upload）
+            $this->rewritePublicPaths($pdo, $pre);
+
             return;
         }
 
